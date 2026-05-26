@@ -151,19 +151,6 @@
 						</a>
 					{/each}
 				</div>
-
-				{#if song.pageUrl}
-					<div class="mt-5 border-t border-zinc-800 pt-4 text-center">
-						<a
-							href={song.pageUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-sm text-violet-400 hover:text-violet-300"
-						>
-							View on song.link →
-						</a>
-					</div>
-				{/if}
 			</div>
 		{/if}
 	</div>
