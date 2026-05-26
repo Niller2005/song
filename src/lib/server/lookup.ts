@@ -20,6 +20,62 @@ export interface SongResult {
 	cached: boolean;
 }
 
+export function getPlatformPrefix(url: string): string {
+	const lower = url.toLowerCase();
+	if (lower.includes('spotify.com') || lower.includes('open.spotify')) return 's';
+	if (
+		lower.includes('apple.com') ||
+		lower.includes('music.apple') ||
+		lower.includes('itunes.apple')
+	)
+		return 'a';
+	if (
+		lower.includes('youtube.com') ||
+		lower.includes('youtu.be') ||
+		lower.includes('music.youtube')
+	)
+		return 'y';
+	if (lower.includes('deezer.com')) return 'd';
+	if (lower.includes('tidal.com')) return 't';
+	if (lower.includes('soundcloud.com')) return 'sc';
+	return 's'; // default
+}
+
+export function extractNativeId(url: string): { prefix: string; id: string } | null {
+	const prefix = getPlatformPrefix(url);
+	const lowerUrl = url.toLowerCase();
+
+	// Find the active provider that matches the domain and has extractId
+	const provider = providers.find((p) => {
+		if (!p.extractId) return false;
+		if (p.name === 'spotify' && lowerUrl.includes('spotify.com')) return true;
+		if (
+			p.name === 'appleMusic' &&
+			(lowerUrl.includes('apple.com') || lowerUrl.includes('itunes.apple.com'))
+		)
+			return true;
+		if (p.name === 'youtube' && (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')))
+			return true;
+		if (p.name === 'deezer' && lowerUrl.includes('deezer.com')) return true;
+		if (p.name === 'tidal' && lowerUrl.includes('tidal.com')) return true;
+		if (p.name === 'soundcloud' && lowerUrl.includes('soundcloud.com')) return true;
+		return false;
+	});
+
+	if (provider && provider.extractId) {
+		const rawId = provider.extractId(url);
+		if (rawId) {
+			// Clean/sanitize to be completely URL-safe: match /[^a-zA-Z0-9\-_]/g to sanitize it
+			const cleanId = rawId.replace(/[^a-zA-Z0-9\-_]/g, '');
+			if (cleanId) {
+				return { prefix, id: cleanId };
+			}
+		}
+	}
+
+	return null;
+}
+
 function normalizeUrl(url: string): string {
 	try {
 		const u = new URL(url.trim());
@@ -33,6 +89,10 @@ function normalizeUrl(url: string): string {
 		return url.trim();
 	}
 }
+
+const isUuid = (str: string) =>
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str) ||
+	str.startsWith('uuid-');
 
 export async function lookupSong(inputUrl: string): Promise<SongResult> {
 	const normalized = normalizeUrl(inputUrl);
@@ -48,13 +108,20 @@ export async function lookupSong(inputUrl: string): Promise<SongResult> {
 		});
 		if (song) {
 			const links = await db.select().from(platformLinks).where(eq(platformLinks.songId, song.id));
+
+			// Extract short/clean URL ID from the composite ID if it is of form prefix-id
+			// Let's parse out the prefix from the song.id or just use the prefix from cached/lookup
+			const hasPrefixMatch = song.id.match(/^([a-z]+)-(.+)$/);
+			const shortId = hasPrefixMatch && !isUuid(song.id) ? hasPrefixMatch[2] : song.id;
+			const songPrefix = hasPrefixMatch && !isUuid(song.id) ? hasPrefixMatch[1] : 's';
+
 			return {
-				id: song.id,
+				id: shortId,
 				title: song.title,
 				artistName: song.artistName,
 				thumbnailUrl: song.thumbnailUrl,
 				type: song.type,
-				pageUrl: song.pageUrl,
+				pageUrl: song.pageUrl || `/${songPrefix}/${shortId}`,
 				platforms: links.map((l) => ({
 					platform: l.platform,
 					url: l.url,
@@ -106,7 +173,10 @@ export async function lookupSong(inputUrl: string): Promise<SongResult> {
 		entityId: string | null;
 	}> = [];
 
-	const songId = crypto.randomUUID();
+	const extracted = extractNativeId(normalized);
+	const songId = extracted ? `${extracted.prefix}-${extracted.id}` : crypto.randomUUID();
+	const prefix = extracted ? extracted.prefix : 's';
+	const pageId = extracted ? extracted.id : songId;
 
 	// Add source platform
 	if (sourcePlatformUrl) {
@@ -170,12 +240,12 @@ export async function lookupSong(inputUrl: string): Promise<SongResult> {
 	}
 
 	return {
-		id: songId,
+		id: pageId,
 		title: metadata.title,
 		artistName: metadata.artistName,
 		thumbnailUrl: metadata.thumbnailUrl,
 		type: metadata.type,
-		pageUrl: null,
+		pageUrl: `/${prefix}/${pageId}`,
 		platforms: platformEntries.map((e) => ({
 			platform: e.platform,
 			url: e.url,

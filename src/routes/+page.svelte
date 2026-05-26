@@ -6,46 +6,6 @@
 
 	let loading = $state(false);
 
-	const platformNames: Record<string, string> = {
-		spotify: 'Spotify',
-		appleMusic: 'Apple Music',
-		youtube: 'YouTube',
-		youtubeMusic: 'YouTube Music',
-		deezer: 'Deezer',
-		tidal: 'Tidal',
-		amazonMusic: 'Amazon Music',
-		soundcloud: 'SoundCloud',
-		napster: 'Napster',
-		pandora: 'Pandora',
-		audiomack: 'Audiomack',
-		audius: 'Audius',
-		anghami: 'Anghami',
-		boomplay: 'Boomplay',
-		itunes: 'iTunes',
-		yandex: 'Yandex Music'
-	};
-
-	const platformColors: Record<string, string> = {
-		spotify: 'bg-green-600 hover:bg-green-500',
-		appleMusic: 'bg-pink-600 hover:bg-pink-500',
-		youtube: 'bg-red-600 hover:bg-red-500',
-		youtubeMusic: 'bg-red-700 hover:bg-red-600',
-		deezer: 'bg-purple-600 hover:bg-purple-500',
-		tidal: 'bg-sky-700 hover:bg-sky-600',
-		amazonMusic: 'bg-blue-600 hover:bg-blue-500',
-		soundcloud: 'bg-orange-500 hover:bg-orange-400',
-		itunes: 'bg-pink-500 hover:bg-pink-400'
-	};
-
-	function getPlatformColor(platform: string): string {
-		return platformColors[platform] ?? 'bg-zinc-600 hover:bg-zinc-500';
-	}
-
-	function getPlatformName(platform: string): string {
-		return platformNames[platform] ?? platform;
-	}
-
-	let result = $derived(form && 'success' in form && form.success ? form.result : null);
 	let error = $derived(form && 'error' in form ? form.error : null);
 </script>
 
@@ -111,64 +71,6 @@
 		{#if error}
 			<div class="mb-8 rounded-xl border border-red-800 bg-red-950/50 px-5 py-4 text-red-300">
 				{error}
-			</div>
-		{/if}
-
-		{#if result}
-			<div class="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-				<div class="mb-6 flex items-center gap-5">
-					{#if result.thumbnailUrl}
-						<img
-							src={result.thumbnailUrl}
-							alt="{result.title} cover"
-							class="h-24 w-24 rounded-xl object-cover shadow-lg"
-						/>
-					{/if}
-					<div>
-						<h2 class="text-2xl font-bold text-white">{result.title}</h2>
-						<p class="text-zinc-400">{result.artistName}</p>
-						<span
-							class="mt-1 inline-block rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs text-zinc-400"
-						>
-							{result.type}
-						</span>
-						<span
-							class="mt-1 ml-2 inline-block rounded-full px-2.5 py-0.5 text-xs {result.cached
-								? 'bg-emerald-900 text-emerald-300'
-								: 'bg-amber-900 text-amber-300'}"
-						>
-							{result.cached ? 'cached' : 'fresh'}
-						</span>
-					</div>
-				</div>
-
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-					{#each result.platforms as link}
-						<a
-							href={link.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium text-white transition-colors {getPlatformColor(
-								link.platform
-							)}"
-						>
-							{getPlatformName(link.platform)}
-						</a>
-					{/each}
-				</div>
-
-				{#if result.pageUrl}
-					<div class="mt-5 border-t border-zinc-800 pt-4 text-center">
-						<a
-							href={result.pageUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="text-sm text-violet-400 hover:text-violet-300"
-						>
-							View on song.link →
-						</a>
-					</div>
-				{/if}
 			</div>
 		{/if}
 	</div>

@@ -4,6 +4,12 @@ import { searchWeb, parseOpenGraph } from './searchHelper';
 export const deezer: PlatformProvider = {
 	name: 'deezer',
 
+	extractId(url: string): string | null {
+		// \/track\/(\d+)
+		const match = url.match(/\/track\/(\d+)/);
+		return match ? match[1] : null;
+	},
+
 	async parseUrl(url: string): Promise<SongMetadata | null> {
 		if (!url.includes('deezer.com')) return null;
 

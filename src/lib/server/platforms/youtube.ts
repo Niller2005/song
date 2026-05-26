@@ -35,6 +35,15 @@ function isYouTubeMusicUrl(url: string): boolean {
 export const youtube: PlatformProvider = {
 	name: 'youtube',
 
+	extractId(url: string): string | null {
+		// [?&]v=([^&]+) or youtu.be\/([^?#/]+) or \/embed\/([^?#/]+)
+		const match =
+			url.match(/[?&]v=([^&]+)/) ||
+			url.match(/youtu\.be\/([^?#/]+)/) ||
+			url.match(/\/embed\/([^?#/]+)/);
+		return match ? match[1] : null;
+	},
+
 	async parseUrl(url: string): Promise<SongMetadata | null> {
 		const videoId = extractVideoId(url);
 		if (!videoId) return null;

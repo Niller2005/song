@@ -16,6 +16,15 @@ function extractTrackId(url: string): string | null {
 export const appleMusic: PlatformProvider = {
 	name: 'appleMusic',
 
+	extractId(url: string): string | null {
+		// [?&]i=(\d+) or \/song\/[^\/]+\/(\d+) or general matching numeric suffix \/(\d+)
+		const match =
+			url.match(/[?&]i=(\d+)/) ||
+			url.match(/\/song\/[^/]+\/(\d+)/) ||
+			url.match(/\/(\d+)(?:[?#/]|$)/);
+		return match ? match[1] : null;
+	},
+
 	async parseUrl(url: string): Promise<SongMetadata | null> {
 		if (!url.includes('music.apple.com') && !url.includes('itunes.apple.com')) return null;
 

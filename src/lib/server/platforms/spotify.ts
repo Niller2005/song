@@ -9,6 +9,13 @@ function extractTrackId(url: string): string | null {
 export const spotify: PlatformProvider = {
 	name: 'spotify',
 
+	extractId(url: string): string | null {
+		const match = url.match(
+			/(?:open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(?:track|album)\/([a-zA-Z0-9]+))|(?:\/(?:track|album)\/([a-zA-Z0-9]+))/
+		);
+		return match ? (match[1] ?? match[2] ?? null) : null;
+	},
+
 	async parseUrl(url: string): Promise<SongMetadata | null> {
 		const trackId = extractTrackId(url);
 		if (!trackId) return null;

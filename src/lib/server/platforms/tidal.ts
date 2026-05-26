@@ -30,6 +30,12 @@ async function getTidalToken(): Promise<string | null> {
 export const tidal: PlatformProvider = {
 	name: 'tidal',
 
+	extractId(url: string): string | null {
+		// \/track\/(\d+)
+		const match = url.match(/\/track\/(\d+)/);
+		return match ? match[1] : null;
+	},
+
 	async parseUrl(url: string): Promise<SongMetadata | null> {
 		if (!url.includes('tidal.com')) return null;
 

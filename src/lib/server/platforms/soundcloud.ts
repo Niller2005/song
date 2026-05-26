@@ -4,6 +4,23 @@ import { searchWeb, parseOpenGraph } from './searchHelper';
 export const soundcloud: PlatformProvider = {
 	name: 'soundcloud',
 
+	extractId(url: string): string | null {
+		// extracting track slug and replacing / with -
+		try {
+			const u = new URL(url);
+			const path = u.pathname.replace(/^\/+|\/+$/g, '');
+			if (path) {
+				return path.replace(/\//g, '-');
+			}
+		} catch {
+			const match = url.match(/soundcloud\.com\/([^?#]+)/);
+			if (match) {
+				return match[1].replace(/^\/+|\/+$/g, '').replace(/\//g, '-');
+			}
+		}
+		return null;
+	},
+
 	async parseUrl(url: string): Promise<SongMetadata | null> {
 		if (!url.includes('soundcloud.com')) return null;
 

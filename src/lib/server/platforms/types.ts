@@ -20,4 +20,6 @@ export interface PlatformProvider {
 	parseUrl(url: string): Promise<SongMetadata | null>;
 	/** Search for a song by title + artist, return the best match URL */
 	search(title: string, artist: string): Promise<PlatformResult | null>;
+	/** Extract native ID from provider URL, return null if unable */
+	extractId?(url: string): string | null;
 }
