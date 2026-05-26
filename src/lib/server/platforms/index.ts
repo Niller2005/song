@@ -1,6 +1,6 @@
 import type { PlatformProvider, SongMetadata, PlatformResult } from './types';
 import { spotify } from './spotify';
-import { youtube } from './youtube';
+import { youtube, youtubeMusic } from './youtube';
 import { appleMusic } from './appleMusic';
 import { tidal } from './tidal';
 import { soundcloud } from './soundcloud';
@@ -17,6 +17,7 @@ import { boomplay } from './boomplay';
 export const providers: PlatformProvider[] = [
 	spotify,
 	youtube,
+	youtubeMusic,
 	appleMusic,
 	tidal,
 	soundcloud,

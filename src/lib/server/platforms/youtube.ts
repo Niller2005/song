@@ -1,5 +1,4 @@
 import type { PlatformProvider, SongMetadata, PlatformResult } from './types';
-import { searchWeb, parseOpenGraph } from './searchHelper';
 
 const PIPED_INSTANCES = [
 	'https://pipedapi.kavin.rocks',
@@ -9,7 +8,82 @@ const PIPED_INSTANCES = [
 
 const INVIDIOUS_INSTANCES = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de'];
 
-async function pipedFetch(path: string): Promise<Response | null> {
+interface CandidateVideo {
+	id: string;
+	title: string;
+	uploader?: string;
+	thumbnailUrl?: string;
+	platformType: 'youtube' | 'youtubeMusic';
+}
+
+export const BLACKLIST_TERMS = [
+	'cover',
+	'remix',
+	'sped up',
+	'slowed',
+	'reverb',
+	'nightcore',
+	'instrumental',
+	'karaoke'
+];
+
+export function getActiveBlacklist(title: string, artist: string): string[] {
+	const lowerTitle = title.toLowerCase();
+	const lowerArtist = artist.toLowerCase();
+	return BLACKLIST_TERMS.filter(
+		(term) => !lowerTitle.includes(term) && !lowerArtist.includes(term)
+	);
+}
+
+export function selectBestVideo(
+	candidates: CandidateVideo[],
+	activeBlacklist: string[],
+	artist: string,
+	title: string
+): CandidateVideo | null {
+	if (candidates.length === 0) return null;
+
+	const lowerArtist = artist.toLowerCase();
+	const lowerTitle = title.toLowerCase();
+
+	const scored = candidates.map((video) => {
+		let score = 0;
+		const lowerVideoTitle = video.title.toLowerCase();
+		const lowerUploader = (video.uploader ?? '').toLowerCase();
+
+		// 1. Blacklist penalty (fatal unless everything is blacklisted, but let's make it a massive penalty)
+		const isBlacklisted = activeBlacklist.some((term) => lowerVideoTitle.includes(term));
+		if (isBlacklisted) {
+			score -= 1000;
+		}
+
+		// 2. Artist match in uploader/channel name
+		if (lowerUploader) {
+			if (lowerUploader === lowerArtist || lowerUploader.includes(lowerArtist)) {
+				score += 100;
+			}
+		}
+
+		// 3. Artist match in title
+		if (lowerVideoTitle.includes(lowerArtist)) {
+			score += 50;
+		}
+
+		// 4. Exact/partial title match bonus
+		if (lowerVideoTitle.includes(lowerTitle)) {
+			score += 30;
+		}
+
+		return { video, score };
+	});
+
+	// Sort by score descending
+	scored.sort((a, b) => b.score - a.score);
+
+	return scored[0].video;
+}
+
+export async function pipedFetch(path: string): Promise<Response | null> {
 	for (const instance of PIPED_INSTANCES) {
 		try {
 			const res = await fetch(`${instance}${path}`, { signal: AbortSignal.timeout(5000) });
@@ -21,30 +95,147 @@ async function pipedFetch(path: string): Promise<Response | null> {
 	return null;
 }
 
-function extractVideoId(url: string): string | null {
+export function extractVideoId(url: string): string | null {
 	const match = url.match(
 		/(?:v=|youtu\.be\/|\/embed\/|music\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
 	);
 	return match?.[1] ?? null;
 }
 
-function isYouTubeMusicUrl(url: string): boolean {
+export function isYouTubeMusicUrl(url: string): boolean {
 	return url.includes('music.youtube.com');
+}
+
+export async function scrapeDirectHtml(encodedQuery: string): Promise<CandidateVideo[]> {
+	try {
+		const res = await fetch(`https://www.youtube.com/results?search_query=${encodedQuery}`, {
+			headers: {
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+			},
+			signal: AbortSignal.timeout(6000)
+		});
+
+		if (!res.ok) return [];
+		const html = await res.text();
+		const segments = html.split('"videoRenderer":');
+		const candidates: CandidateVideo[] = [];
+		const maxResults = Math.min(segments.length, 16);
+
+		for (let i = 1; i < maxResults; i++) {
+			const segment = segments[i];
+			const videoIdMatch = segment.match(/^\{\s*"videoId"\s*:\s*"([^"]+)"/);
+			if (!videoIdMatch) continue;
+
+			const videoId = videoIdMatch[1];
+
+			const titleMatch = segment.match(
+				/"title"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"/
+			);
+			if (!titleMatch) continue;
+
+			let videoTitle = '';
+			try {
+				videoTitle = JSON.parse(`"${titleMatch[1]}"`);
+			} catch {
+				videoTitle = titleMatch[1];
+			}
+
+			let uploader = '';
+			const ownerMatch = segment.match(
+				/"(?:ownerText|shortBylineText|longBylineText)"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"/
+			);
+			if (ownerMatch) {
+				try {
+					uploader = JSON.parse(`"${ownerMatch[1]}"`);
+				} catch {
+					uploader = ownerMatch[1];
+				}
+			}
+
+			candidates.push({
+				id: videoId,
+				title: videoTitle,
+				uploader,
+				thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+				platformType: 'youtube'
+			});
+		}
+
+		// Also look for lockupViewModel segments (often used for official mixes/playlists on the search page)
+		const lockupSegments = html.split('"lockupViewModel":');
+		for (let i = 1; i < lockupSegments.length; i++) {
+			const segment = lockupSegments[i];
+			const watchMatch = segment.match(/"watchEndpoint"\s*:\s*\{\s*"videoId"\s*:\s*"([^"]+)"/);
+			if (!watchMatch) continue;
+			const videoId = watchMatch[1];
+
+			const titleMatch = segment.match(/"title"\s*:\s*\{\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+			let videoTitle = '';
+			if (titleMatch) {
+				try {
+					videoTitle = JSON.parse(`"${titleMatch[1]}"`);
+				} catch {
+					videoTitle = titleMatch[1];
+				}
+			}
+
+			if (videoTitle) {
+				// Clean up "Mix – " or "Mix - " prefix if present
+				if (videoTitle.startsWith('Mix – ')) {
+					videoTitle = videoTitle.replace(/^Mix – /, '');
+				} else if (videoTitle.startsWith('Mix - ')) {
+					videoTitle = videoTitle.replace(/^Mix - /, '');
+				}
+
+				let uploader = '';
+				const subSimpleMatch = segment.match(
+					/"subtitle"\s*:\s*\{\s*"simpleText"\s*:\s*"((?:[^"\\]|\\.)*)"/
+				);
+				const subRunsMatch = segment.match(
+					/"subtitle"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"/
+				);
+				if (subSimpleMatch) {
+					try {
+						uploader = JSON.parse(`"${subSimpleMatch[1]}"`);
+					} catch {
+						uploader = subSimpleMatch[1];
+					}
+				} else if (subRunsMatch) {
+					try {
+						uploader = JSON.parse(`"${subRunsMatch[1]}"`);
+					} catch {
+						uploader = subRunsMatch[1];
+					}
+				}
+
+				candidates.push({
+					id: videoId,
+					title: videoTitle,
+					uploader,
+					thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+					platformType: 'youtube'
+				});
+			}
+		}
+
+		return candidates;
+	} catch (err) {
+		console.error('YouTube direct HTML search failed:', err);
+		return [];
+	}
 }
 
 export const youtube: PlatformProvider = {
 	name: 'youtube',
 
 	extractId(url: string): string | null {
-		// [?&]v=([^&]+) or youtu.be\/([^?#/]+) or \/embed\/([^?#/]+)
-		const match =
-			url.match(/[?&]v=([^&]+)/) ||
-			url.match(/youtu\.be\/([^?#/]+)/) ||
-			url.match(/\/embed\/([^?#/]+)/);
-		return match ? match[1] : null;
+		if (isYouTubeMusicUrl(url)) return null;
+		return extractVideoId(url);
 	},
 
 	async parseUrl(url: string): Promise<SongMetadata | null> {
+		if (isYouTubeMusicUrl(url)) return null;
 		const videoId = extractVideoId(url);
 		if (!videoId) return null;
 
@@ -61,7 +252,7 @@ export const youtube: PlatformProvider = {
 				artistName: data.author_name ?? 'Unknown',
 				thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
 				type: 'song',
-				sourcePlatform: isYouTubeMusicUrl(url) ? 'youtubeMusic' : 'youtube'
+				sourcePlatform: 'youtube'
 			};
 		} catch {
 			return null;
@@ -69,115 +260,54 @@ export const youtube: PlatformProvider = {
 	},
 
 	async search(title: string, artist: string): Promise<PlatformResult | null> {
-		const query = `${title} ${artist} official audio`;
+		const activeBlacklist = getActiveBlacklist(title, artist);
+		const query = `${title} ${artist}`;
 		const encodedQuery = encodeURIComponent(query);
 
-		try {
-			// Fetch search results directly from YouTube
-			const res = await fetch(`https://www.youtube.com/results?search_query=${encodedQuery}`, {
-				headers: {
-					'User-Agent':
-						'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-				},
-				signal: AbortSignal.timeout(6000)
-			});
-
-			if (res.ok) {
-				const html = await res.text();
-				const segments = html.split('"videoRenderer":');
-
-				const blacklistTerms = [
-					'sped up',
-					'slowed',
-					'reverb',
-					'nightcore',
-					'cover',
-					'remix',
-					'instrumental',
-					'karaoke'
-				];
-				const lowerTitle = title.toLowerCase();
-				const lowerArtist = artist.toLowerCase();
-				const activeBlacklist = blacklistTerms.filter(
-					(term) => !lowerTitle.includes(term) && !lowerArtist.includes(term)
-				);
-
-				let firstVideoId: string | null = null;
-				const maxResults = Math.min(segments.length, 16);
-
-				for (let i = 1; i < maxResults; i++) {
-					const segment = segments[i];
-					const videoIdMatch = segment.match(/^\{\s*"videoId"\s*:\s*"([^"]+)"/);
-					if (!videoIdMatch) continue;
-
-					const videoId = videoIdMatch[1];
-					if (!firstVideoId) {
-						firstVideoId = videoId;
-					}
-
-					const titleMatch = segment.match(
-						/"title"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"([^"]+)"/
-					);
-					if (titleMatch) {
-						const videoTitle = titleMatch[1];
-						const lowerVideoTitle = videoTitle.toLowerCase();
-						const isBlacklisted = activeBlacklist.some((term) => lowerVideoTitle.includes(term));
-
-						if (!isBlacklisted) {
-							return {
-								platform: 'youtube',
-								url: `https://www.youtube.com/watch?v=${videoId}`,
-								title: title,
-								artistName: artist,
-								thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-							};
-						}
-					}
-				}
-
-				if (firstVideoId) {
-					return {
-						platform: 'youtube',
-						url: `https://www.youtube.com/watch?v=${firstVideoId}`,
-						title: title,
-						artistName: artist,
-						thumbnailUrl: `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
-					};
-				}
-			}
-		} catch (err) {
-			console.error('YouTube direct HTML search failed, falling back to piped:', err);
+		// 1. Direct HTML Scraper
+		const candidates = await scrapeDirectHtml(encodedQuery);
+		const chosen = selectBestVideo(candidates, activeBlacklist, artist, title);
+		if (chosen) {
+			return {
+				platform: 'youtube',
+				url: `https://www.youtube.com/watch?v=${chosen.id}`,
+				title: title,
+				artistName: artist,
+				thumbnailUrl: chosen.thumbnailUrl ?? `https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg`
+			};
 		}
 
+		// 2. Piped (with filter=videos)
 		try {
-			// Try music_songs filter first, then fall back to videos
-			const res = await pipedFetch(`/search?q=${encodedQuery}&filter=music_songs`);
+			const res = await pipedFetch(`/search?q=${encodedQuery}&filter=videos`);
 			if (res) {
 				const data = await res.json();
-				const item = data.items?.[0];
-				if (item?.url) {
-					return {
-						platform: 'youtubeMusic',
-						url: `https://music.youtube.com${item.url}`,
-						title: item.title,
-						artistName: item.uploaderName,
-						thumbnailUrl: item.thumbnail
-					};
+				const pipedCandidates: CandidateVideo[] = [];
+				if (Array.isArray(data.items)) {
+					const limit = Math.min(data.items.length, 10);
+					for (let i = 0; i < limit; i++) {
+						const item = data.items[i];
+						if (!item || !item.url) continue;
+						const id = extractVideoId(item.url);
+						if (!id) continue;
+						pipedCandidates.push({
+							id,
+							title: item.title ?? '',
+							uploader: item.uploaderName,
+							thumbnailUrl: item.thumbnail,
+							platformType: 'youtube'
+						});
+					}
 				}
-			}
 
-			// Fallback without filter
-			const res2 = await pipedFetch(`/search?q=${encodedQuery}&filter=videos`);
-			if (res2) {
-				const data2 = await res2.json();
-				const item = data2.items?.[0];
-				if (item?.url) {
+				const pipedChosen = selectBestVideo(pipedCandidates, activeBlacklist, artist, title);
+				if (pipedChosen) {
 					return {
 						platform: 'youtube',
-						url: `https://www.youtube.com${item.url}`,
-						title: item.title,
-						artistName: item.uploaderName,
-						thumbnailUrl: item.thumbnail
+						url: `https://www.youtube.com/watch?v=${pipedChosen.id}`,
+						title: pipedChosen.title || title,
+						artistName: pipedChosen.uploader || artist,
+						thumbnailUrl: pipedChosen.thumbnailUrl
 					};
 				}
 			}
@@ -185,7 +315,7 @@ export const youtube: PlatformProvider = {
 			console.error('YouTube Piped search failed:', err);
 		}
 
-		// Try Invidious as last resort
+		// 3. Invidious (with type=video)
 		for (const instance of INVIDIOUS_INSTANCES) {
 			try {
 				const res = await fetch(`${instance}/api/v1/search?q=${encodedQuery}&type=video`, {
@@ -193,19 +323,133 @@ export const youtube: PlatformProvider = {
 				});
 				if (!res.ok) continue;
 				const results = await res.json();
-				const item = results?.[0];
-				if (item?.videoId) {
+				const invidiousCandidates: CandidateVideo[] = [];
+				if (Array.isArray(results)) {
+					const limit = Math.min(results.length, 10);
+					for (let i = 0; i < limit; i++) {
+						const item = results[i];
+						if (!item || !item.videoId) continue;
+						invidiousCandidates.push({
+							id: item.videoId,
+							title: item.title ?? '',
+							uploader: item.author,
+							thumbnailUrl: item.videoThumbnails?.[0]?.url,
+							platformType: 'youtube'
+						});
+					}
+				}
+
+				const invidiousChosen = selectBestVideo(
+					invidiousCandidates,
+					activeBlacklist,
+					artist,
+					title
+				);
+				if (invidiousChosen) {
 					return {
-						platform: 'youtubeMusic',
-						url: `https://music.youtube.com/watch?v=${item.videoId}`,
-						title: item.title,
-						artistName: item.author,
-						thumbnailUrl: item.videoThumbnails?.[0]?.url
+						platform: 'youtube',
+						url: `https://www.youtube.com/watch?v=${invidiousChosen.id}`,
+						title: invidiousChosen.title || title,
+						artistName: invidiousChosen.uploader || artist,
+						thumbnailUrl: invidiousChosen.thumbnailUrl
 					};
 				}
 			} catch {
 				continue;
 			}
+		}
+
+		return null;
+	}
+};
+
+export const youtubeMusic: PlatformProvider = {
+	name: 'youtubeMusic',
+
+	extractId(url: string): string | null {
+		if (!isYouTubeMusicUrl(url)) return null;
+		return extractVideoId(url);
+	},
+
+	async parseUrl(url: string): Promise<SongMetadata | null> {
+		if (!isYouTubeMusicUrl(url)) return null;
+		const videoId = extractVideoId(url);
+		if (!videoId) return null;
+
+		try {
+			// Use oEmbed for basic metadata
+			const res = await fetch(
+				`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+			);
+			if (!res.ok) return null;
+			const data = await res.json();
+
+			return {
+				title: data.title ?? 'Unknown',
+				artistName: data.author_name ?? 'Unknown',
+				thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+				type: 'song',
+				sourcePlatform: 'youtubeMusic'
+			};
+		} catch {
+			return null;
+		}
+	},
+
+	async search(title: string, artist: string): Promise<PlatformResult | null> {
+		const activeBlacklist = getActiveBlacklist(title, artist);
+		const query = `${title} ${artist}`;
+		const encodedQuery = encodeURIComponent(query);
+
+		// 1. Piped with filter=music_songs
+		try {
+			const res = await pipedFetch(`/search?q=${encodedQuery}&filter=music_songs`);
+			if (res) {
+				const data = await res.json();
+				const candidates: CandidateVideo[] = [];
+				if (Array.isArray(data.items)) {
+					const limit = Math.min(data.items.length, 10);
+					for (let i = 0; i < limit; i++) {
+						const item = data.items[i];
+						if (!item || !item.url) continue;
+						const id = extractVideoId(item.url);
+						if (!id) continue;
+						candidates.push({
+							id,
+							title: item.title ?? '',
+							uploader: item.uploaderName,
+							thumbnailUrl: item.thumbnail,
+							platformType: 'youtubeMusic'
+						});
+					}
+				}
+
+				const chosen = selectBestVideo(candidates, activeBlacklist, artist, title);
+				if (chosen) {
+					return {
+						platform: 'youtubeMusic',
+						url: `https://music.youtube.com/watch?v=${chosen.id}`,
+						title: chosen.title || title,
+						artistName: chosen.uploader || artist,
+						thumbnailUrl: chosen.thumbnailUrl
+					};
+				}
+			}
+		} catch (err) {
+			console.error('YouTube Music Piped search failed:', err);
+		}
+
+		// 2. Direct HTML search fallback
+		const directCandidates = await scrapeDirectHtml(encodedQuery);
+		const chosen = selectBestVideo(directCandidates, activeBlacklist, artist, title);
+		if (chosen) {
+			return {
+				platform: 'youtubeMusic',
+				url: `https://music.youtube.com/watch?v=${chosen.id}`,
+				title: title,
+				artistName: artist,
+				thumbnailUrl: chosen.thumbnailUrl ?? `https://i.ytimg.com/vi/${chosen.id}/hqdefault.jpg`
+			};
 		}
 
 		return null;
