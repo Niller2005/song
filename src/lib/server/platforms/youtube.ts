@@ -69,7 +69,7 @@ export const youtube: PlatformProvider = {
 	},
 
 	async search(title: string, artist: string): Promise<PlatformResult | null> {
-		const query = `${title} ${artist}`;
+		const query = `${title} ${artist} official audio`;
 		const encodedQuery = encodeURIComponent(query);
 
 		try {
@@ -84,15 +84,64 @@ export const youtube: PlatformProvider = {
 
 			if (res.ok) {
 				const html = await res.text();
-				const match = html.match(/"videoId":\s*"([^"]+)"/);
-				if (match?.[1]) {
-					const videoId = match[1];
+				const segments = html.split('"videoRenderer":');
+
+				const blacklistTerms = [
+					'sped up',
+					'slowed',
+					'reverb',
+					'nightcore',
+					'cover',
+					'remix',
+					'instrumental',
+					'karaoke'
+				];
+				const lowerTitle = title.toLowerCase();
+				const lowerArtist = artist.toLowerCase();
+				const activeBlacklist = blacklistTerms.filter(
+					(term) => !lowerTitle.includes(term) && !lowerArtist.includes(term)
+				);
+
+				let firstVideoId: string | null = null;
+				const maxResults = Math.min(segments.length, 16);
+
+				for (let i = 1; i < maxResults; i++) {
+					const segment = segments[i];
+					const videoIdMatch = segment.match(/^\{\s*"videoId"\s*:\s*"([^"]+)"/);
+					if (!videoIdMatch) continue;
+
+					const videoId = videoIdMatch[1];
+					if (!firstVideoId) {
+						firstVideoId = videoId;
+					}
+
+					const titleMatch = segment.match(
+						/"title"\s*:\s*\{\s*"runs"\s*:\s*\[\s*\{\s*"text"\s*:\s*"([^"]+)"/
+					);
+					if (titleMatch) {
+						const videoTitle = titleMatch[1];
+						const lowerVideoTitle = videoTitle.toLowerCase();
+						const isBlacklisted = activeBlacklist.some((term) => lowerVideoTitle.includes(term));
+
+						if (!isBlacklisted) {
+							return {
+								platform: 'youtube',
+								url: `https://www.youtube.com/watch?v=${videoId}`,
+								title: title,
+								artistName: artist,
+								thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+							};
+						}
+					}
+				}
+
+				if (firstVideoId) {
 					return {
 						platform: 'youtube',
-						url: `https://www.youtube.com/watch?v=${videoId}`,
+						url: `https://www.youtube.com/watch?v=${firstVideoId}`,
 						title: title,
 						artistName: artist,
-						thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+						thumbnailUrl: `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
 					};
 				}
 			}
