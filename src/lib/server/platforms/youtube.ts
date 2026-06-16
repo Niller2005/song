@@ -43,8 +43,8 @@ export function selectBestVideo(
 ): CandidateVideo | null {
 	if (candidates.length === 0) return null;
 
-	const lowerArtist = artist.toLowerCase();
-	const lowerTitle = title.toLowerCase();
+	const normalizedArtist = artist.trim().toLowerCase();
+	const normalizedTitle = title.trim().toLowerCase();
 
 	const scored = candidates.map((video) => {
 		let score = 0;
@@ -58,19 +58,19 @@ export function selectBestVideo(
 		}
 
 		// 2. Artist match in uploader/channel name
-		if (lowerUploader) {
-			if (lowerUploader === lowerArtist || lowerUploader.includes(lowerArtist)) {
+		if (normalizedArtist && lowerUploader) {
+			if (lowerUploader === normalizedArtist || lowerUploader.includes(normalizedArtist)) {
 				score += 100;
 			}
 		}
 
 		// 3. Artist match in title
-		if (lowerVideoTitle.includes(lowerArtist)) {
+		if (normalizedArtist && lowerVideoTitle.includes(normalizedArtist)) {
 			score += 50;
 		}
 
 		// 4. Exact/partial title match bonus
-		if (lowerVideoTitle.includes(lowerTitle)) {
+		if (normalizedTitle && lowerVideoTitle.includes(normalizedTitle)) {
 			score += 30;
 		}
 
@@ -79,6 +79,8 @@ export function selectBestVideo(
 
 	// Sort by score descending
 	scored.sort((a, b) => b.score - a.score);
+
+	if (scored[0].score <= 0) return null;
 
 	return scored[0].video;
 }
