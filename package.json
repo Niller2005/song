@@ -38,6 +38,7 @@
 	},
 	"dependencies": {
 		"@better-auth/drizzle-adapter": "^1.6.19",
+		"@scalar/sveltekit": "^0.3.3",
 		"better-auth": "^1.6.19"
 	}
 }
