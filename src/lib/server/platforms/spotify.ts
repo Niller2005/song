@@ -50,9 +50,46 @@ export const spotify: PlatformProvider = {
 			}
 		}
 
-		// Fallback: oEmbed (always free, no auth)
-		// Note: Spotify oEmbed only returns the track name in `title`, not the artist.
-		// The HTML iframe embed contains artist info but we can't reliably extract it.
+		// Fallback: scrape the public Spotify embed page for title + artist.
+		// oEmbed only returns the track title, and iTunes search for a common title
+		// often returns the most popular wrong artist (e.g. Ed Sheeran instead of Jerri).
+		try {
+			const embedRes = await fetch(`https://open.spotify.com/embed/track/${trackId}`, {
+				headers: {
+					'User-Agent':
+						'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+				}
+			});
+			if (embedRes.ok) {
+				const html = await embedRes.text();
+				const dataMatch = html.match(
+					/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s
+				);
+				if (dataMatch) {
+					const data = JSON.parse(dataMatch[1]);
+					const entity = data.props?.pageProps?.state?.data?.entity;
+					if (entity && entity.type === 'track') {
+						const title = entity.name ?? 'Unknown';
+						const artistName = entity.artists?.map((a: any) => a.name).join(', ') ?? 'Unknown';
+						const thumbnailUrl =
+							entity.visualIdentity?.image?.find((i: any) => i.maxWidth === 640)?.url ??
+							entity.visualIdentity?.image?.[0]?.url ??
+							null;
+
+						return {
+							title,
+							artistName,
+							thumbnailUrl,
+							type: 'song',
+							sourcePlatform: 'spotify'
+						};
+					}
+				}
+			}
+		} catch {
+			/* fall through to oEmbed */
+		}
+
 		try {
 			const res = await fetch(
 				`https://open.spotify.com/oembed?url=https://open.spotify.com/track/${trackId}`
@@ -60,41 +97,15 @@ export const spotify: PlatformProvider = {
 			if (!res.ok) return null;
 			const data = await res.json();
 
-			// oEmbed gives us the track title. Use iTunes to find the artist.
-			let artistName = 'Unknown';
-			const title = data.title ?? 'Unknown';
-			const thumbnailUrl = data.thumbnail_url ?? null;
-
-			if (title !== 'Unknown') {
-				try {
-					const itunesRes = await fetch(
-						`https://itunes.apple.com/search?term=${encodeURIComponent(title)}&media=music&entity=song&limit=5`
-					);
-					if (itunesRes.ok) {
-						const itunesData = await itunesRes.json();
-						// Find best match by title similarity
-						const match =
-							itunesData.results?.find(
-								(r: any) => r.trackName?.toLowerCase() === title.toLowerCase()
-							) ?? itunesData.results?.[0];
-						if (match) {
-							artistName = match.artistName ?? 'Unknown';
-						}
-					}
-				} catch {
-					// iTunes lookup failed, continue with Unknown artist
-				}
-			}
-
 			return {
-				title,
-				artistName,
-				thumbnailUrl,
+				title: data.title ?? 'Unknown',
+				artistName: 'Unknown',
+				thumbnailUrl: data.thumbnail_url ?? null,
 				type: 'song',
 				sourcePlatform: 'spotify'
 			};
 		} catch (err) {
-			console.error('Spotify oEmbed failed:', err);
+			console.error('Spotify fallback failed:', err);
 			return null;
 		}
 	},
