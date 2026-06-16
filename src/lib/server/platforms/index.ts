@@ -10,7 +10,6 @@ import { pandora } from './pandora';
 import { napster } from './napster';
 import { yandex } from './yandex';
 import { audiomack } from './audiomack';
-import { audius } from './audius';
 import { anghami } from './anghami';
 import { boomplay } from './boomplay';
 
@@ -27,7 +26,6 @@ export const providers: PlatformProvider[] = [
 	napster,
 	yandex,
 	audiomack,
-	audius,
 	anghami,
 	boomplay
 ];

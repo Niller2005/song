@@ -18,7 +18,6 @@
 		napster: 'Napster',
 		pandora: 'Pandora',
 		audiomack: 'Audiomack',
-		audius: 'Audius',
 		anghami: 'Anghami',
 		boomplay: 'Boomplay',
 		itunes: 'iTunes',

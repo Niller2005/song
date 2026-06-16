@@ -129,7 +129,7 @@ Returned when the provided URL cannot be recognized or lookup fails against the 
 - **Payload**:
   ```json
   {
-  	"message": "Failed to look up song: Could not recognize this URL. Supported platforms: Spotify, Youtube, AppleMusic, Tidal, Soundcloud, Deezer, AmazonMusic, Pandora, Napster, Yandex, Audiomack, Audius, Anghami, Boomplay"
+  	"message": "Failed to look up song: Could not recognize this URL. Supported platforms: Spotify, Youtube, AppleMusic, Tidal, Soundcloud, Deezer, AmazonMusic, Pandora, Napster, Yandex, Audiomack, Anghami, Boomplay"
   }
   ```
 

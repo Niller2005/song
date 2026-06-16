@@ -163,17 +163,11 @@ export async function parseOpenGraph(
 		// Clean up titles or artists that might have "on Pandora", "on Amazon Music", etc.
 		if (artistName) {
 			artistName = artistName
-				.replace(
-					/\s+on\s+(?:Pandora|Amazon Music|Yandex|Napster|Audiomack|Audius|Anghami|Boomplay)/i,
-					''
-				)
+				.replace(/\s+on\s+(?:Pandora|Amazon Music|Yandex|Napster|Audiomack|Anghami|Boomplay)/i, '')
 				.trim();
 		}
 		title = title
-			.replace(
-				/\s+on\s+(?:Pandora|Amazon Music|Yandex|Napster|Audiomack|Audius|Anghami|Boomplay)/i,
-				''
-			)
+			.replace(/\s+on\s+(?:Pandora|Amazon Music|Yandex|Napster|Audiomack|Anghami|Boomplay)/i, '')
 			.trim();
 
 		return {
