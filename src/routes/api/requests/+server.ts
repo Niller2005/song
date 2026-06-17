@@ -1,7 +1,7 @@
 import { auth } from '$lib/auth';
 import { db } from '$lib/server/db';
 import { account, songRequests } from '$lib/server/db/schema';
-import { eq, desc, asc, and } from 'drizzle-orm';
+import { eq, desc, asc } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { lookupSong } from '$lib/server/lookup';
 import { providers } from '$lib/server/platforms';
@@ -142,7 +142,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	}
 
 	const now = new Date();
-	const inserted = await db
+	const [inserted] = await db
 		.insert(songRequests)
 		.values({
 			userId: auth_.userId,
@@ -156,7 +156,36 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		})
 		.returning();
 
-	return new Response(JSON.stringify(serialize(inserted[0])), {
+	if (inserted.spotifyTrackId) {
+		try {
+			const accessTokenResult = await auth.api.getAccessToken({
+				body: { providerId: 'spotify', userId: auth_.userId },
+				headers: request.headers
+			});
+
+			if (accessTokenResult?.accessToken) {
+				const queueRes = await fetch(
+					`https://api.spotify.com/v1/me/player/queue?uri=spotify:track:${inserted.spotifyTrackId}`,
+					{
+						method: 'POST',
+						headers: { Authorization: `Bearer ${accessTokenResult.accessToken}` }
+					}
+				);
+
+				if (queueRes.ok) {
+					await db
+						.update(songRequests)
+						.set({ status: 'playing' })
+						.where(eq(songRequests.id, inserted.id));
+					inserted.status = 'playing';
+				}
+			}
+		} catch {
+			// Non-critical — request still goes through as pending if queue push fails
+		}
+	}
+
+	return new Response(JSON.stringify(serialize(inserted)), {
 		status: 201,
 		headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
 	});
