@@ -12,6 +12,7 @@ export const auth = betterAuth({
 		schema
 	}),
 	plugins: [sveltekitCookies(() => getRequestEvent())],
+	baseURL: env.BETTER_AUTH_URL || 'http://localhost:5173',
 	socialProviders: {
 		spotify: {
 			clientId: env.SPOTIFY_CLIENT_ID!,

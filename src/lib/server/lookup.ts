@@ -102,6 +102,8 @@ export async function lookupSong(inputUrl: string): Promise<SongResult> {
 		where: eq(urlLookups.url, normalized)
 	});
 
+	const knownPlatforms = new Set(providers.map((p) => p.name));
+
 	if (cached) {
 		const song = await db.query.songs.findFirst({
 			where: eq(songs.id, cached.songId)
@@ -122,12 +124,14 @@ export async function lookupSong(inputUrl: string): Promise<SongResult> {
 				thumbnailUrl: song.thumbnailUrl,
 				type: song.type,
 				pageUrl: song.pageUrl || `/${songPrefix}/${shortId}`,
-				platforms: links.map((l) => ({
-					platform: l.platform,
-					url: l.url,
-					nativeAppUriMobile: l.nativeAppUriMobile,
-					nativeAppUriDesktop: l.nativeAppUriDesktop
-				})),
+				platforms: links
+					.filter((l) => knownPlatforms.has(l.platform))
+					.map((l) => ({
+						platform: l.platform,
+						url: l.url,
+						nativeAppUriMobile: l.nativeAppUriMobile,
+						nativeAppUriDesktop: l.nativeAppUriDesktop
+					})),
 				cached: true
 			};
 		}
@@ -246,12 +250,14 @@ export async function lookupSong(inputUrl: string): Promise<SongResult> {
 		thumbnailUrl: metadata.thumbnailUrl,
 		type: metadata.type,
 		pageUrl: `/${prefix}/${pageId}`,
-		platforms: platformEntries.map((e) => ({
-			platform: e.platform,
-			url: e.url,
-			nativeAppUriMobile: e.nativeAppUriMobile,
-			nativeAppUriDesktop: e.nativeAppUriDesktop
-		})),
+		platforms: platformEntries
+			.filter((e) => knownPlatforms.has(e.platform))
+			.map((e) => ({
+				platform: e.platform,
+				url: e.url,
+				nativeAppUriMobile: e.nativeAppUriMobile,
+				nativeAppUriDesktop: e.nativeAppUriDesktop
+			})),
 		cached: false
 	};
 }

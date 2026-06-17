@@ -3,6 +3,7 @@ import { songs, platformLinks } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { error, redirect, fail } from '@sveltejs/kit';
 import { lookupSong } from '$lib/server/lookup';
+import { providers } from '$lib/server/platforms';
 import type { PageServerLoad, Actions } from './$types';
 
 const VALID_PREFIXES = ['s', 'a', 'y', 'd', 't', 'sc'] as const;
@@ -51,6 +52,8 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	const links = await db.select().from(platformLinks).where(eq(platformLinks.songId, song.id));
 
+	const knownPlatforms = new Set(providers.map((p) => p.name));
+
 	return {
 		song: {
 			id: song.id,
@@ -59,12 +62,14 @@ export const load: PageServerLoad = async ({ params }) => {
 			thumbnailUrl: song.thumbnailUrl,
 			type: song.type,
 			pageUrl: song.pageUrl || `/${prefix}/${id}`,
-			platforms: links.map((l) => ({
-				platform: l.platform,
-				url: l.url,
-				nativeAppUriMobile: l.nativeAppUriMobile,
-				nativeAppUriDesktop: l.nativeAppUriDesktop
-			}))
+			platforms: links
+				.filter((l) => knownPlatforms.has(l.platform))
+				.map((l) => ({
+					platform: l.platform,
+					url: l.url,
+					nativeAppUriMobile: l.nativeAppUriMobile,
+					nativeAppUriDesktop: l.nativeAppUriDesktop
+				}))
 		}
 	};
 };
