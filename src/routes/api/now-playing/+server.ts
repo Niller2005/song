@@ -4,6 +4,7 @@ import { account } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { recordPlay } from '$lib/server/listening-history';
+import { findYouTubeUrl } from '$lib/server/youtube-lookup';
 import type { RequestHandler } from './$types';
 
 interface NowPlayingResponse {
@@ -16,9 +17,10 @@ interface NowPlayingResponse {
 	duration: number | null;
 	spotifyUrl: string | null;
 	spotifyTrackId: string | null;
+	youtubeUrl: string | null;
 }
 
-const 		NOT_PLAYING: NowPlayingResponse = {
+const NOT_PLAYING: NowPlayingResponse = {
 	isPlaying: false,
 	title: null,
 	artist: null,
@@ -27,7 +29,8 @@ const 		NOT_PLAYING: NowPlayingResponse = {
 	progress: null,
 	duration: null,
 	spotifyUrl: null,
-	spotifyTrackId: null
+	spotifyTrackId: null,
+	youtubeUrl: null
 };
 
 // /api/now-playing?key=xxx — API key auth for OBS browser sources
@@ -100,6 +103,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 
 		const track = data.item;
 		const spotifyTrackId: string | null = track.id ?? null;
+		const spotifyUrl = track.external_urls?.spotify ?? null;
 		const result: NowPlayingResponse = {
 			isPlaying: data.is_playing ?? false,
 			title: track.name ?? null,
@@ -108,8 +112,9 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			albumArt: track.album?.images?.[0]?.url ?? null,
 			progress: data.progress_ms ?? null,
 			duration: track.duration_ms ?? null,
-			spotifyUrl: track.external_urls?.spotify ?? null,
-			spotifyTrackId: track.id ?? null
+			spotifyUrl,
+			spotifyTrackId: track.id ?? null,
+			youtubeUrl: await findYouTubeUrl(spotifyUrl)
 		};
 
 		if (result.isPlaying && result.title && spotifyTrackId) {

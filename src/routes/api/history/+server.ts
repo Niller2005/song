@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { account } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { findYouTubeUrl } from '$lib/server/youtube-lookup';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, url }) => {
@@ -35,7 +36,15 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50'), 100);
 	const history = await getHistory(userId!, limit);
 
-	return new Response(JSON.stringify(history), {
+	const enriched = await Promise.all(
+		history.map(async (entry) => ({
+			...entry,
+			playedAt: entry.playedAt.toISOString(),
+			youtubeUrl: await findYouTubeUrl(entry.spotifyUrl)
+		}))
+	);
+
+	return new Response(JSON.stringify(enriched), {
 		headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
 	});
 };

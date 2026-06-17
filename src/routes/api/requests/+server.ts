@@ -5,6 +5,7 @@ import { eq, desc, asc } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { lookupSong } from '$lib/server/lookup';
 import { providers } from '$lib/server/platforms';
+import { findYouTubeUrl } from '$lib/server/youtube-lookup';
 import type { RequestHandler } from './$types';
 
 function getUserIdFromApiKey(): Promise<string | null> {
@@ -42,6 +43,7 @@ interface SongRequestResponse {
 	albumArt: string | null;
 	spotifyUrl: string | null;
 	spotifyTrackId: string | null;
+	youtubeUrl: string | null;
 	status: 'pending' | 'queued' | 'playing' | 'played';
 	requestedBy: string;
 	requestedAt: string;
@@ -55,6 +57,7 @@ function serialize(r: typeof songRequests.$inferSelect): SongRequestResponse {
 		albumArt: r.albumArt,
 		spotifyUrl: r.spotifyUrl,
 		spotifyTrackId: r.spotifyTrackId,
+		youtubeUrl: null,
 		status: r.status,
 		requestedBy: r.requestedBy,
 		requestedAt: r.requestedAt.toISOString()
@@ -73,7 +76,16 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		limit: 100
 	});
 
-	return new Response(JSON.stringify(rows.map(serialize)), {
+	const serialized = rows.map(serialize);
+
+	const enriched = await Promise.all(
+		serialized.map(async (r) => ({
+			...r,
+			youtubeUrl: await findYouTubeUrl(r.spotifyUrl)
+		}))
+	);
+
+	return new Response(JSON.stringify(enriched), {
 		headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
 	});
 };
