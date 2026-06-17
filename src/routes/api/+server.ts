@@ -182,6 +182,60 @@ const spec = {
 				}
 			}
 		},
+		'/api/requests/{id}': {
+			patch: {
+				summary: 'Queue a song request to Spotify',
+				description:
+					'Pushes a pending song request to the Spotify playback queue. The request must have a Spotify track ID and be in "pending" status. Requires authentication via session cookie or `?key=` query parameter.',
+				parameters: [
+					{
+						name: 'id',
+						in: 'path',
+						required: true,
+						schema: { type: 'string' },
+						description: 'The request ID'
+					},
+					{
+						name: 'key',
+						in: 'query',
+						required: false,
+						schema: { type: 'string' },
+						description: 'API key for unauthenticated access'
+					}
+				],
+				security: [{ sessionCookie: [] }, { apiKey: [] }],
+				responses: {
+					'200': {
+						description: 'Request queued to Spotify',
+						content: {
+							'application/json': {
+								schema: { $ref: '#/components/schemas/SongRequest' }
+							}
+						}
+					},
+					'400': {
+						description: 'Request is not pending or has no Spotify track ID',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					},
+					'401': {
+						description: 'Unauthorized',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					},
+					'403': {
+						description: 'Forbidden',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					},
+					'404': {
+						description: 'Request not found',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					},
+					'502': {
+						description: 'Spotify queue request failed',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					}
+				}
+			}
+		},
 		'/api/history': {
 			get: {
 				summary: 'Get listening history',

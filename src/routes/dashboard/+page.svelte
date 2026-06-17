@@ -46,6 +46,7 @@
 	let reqError = $state<string | null>(null);
 	let copiedOverlay = $state(false);
 	let copiedRequest = $state(false);
+	let queuingId = $state<string | null>(null);
 
 	function formatMs(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -113,6 +114,23 @@
 
 	async function signOut() {
 		await authClient.signOut();
+	}
+
+	async function queueRequest(id: string) {
+		queuingId = id;
+		try {
+			const res = await fetch(`/api/requests/${id}`, { method: 'PATCH' });
+			if (!res.ok) {
+				const body = await res.json();
+				throw new Error(body.error ?? `HTTP ${res.status}`);
+			}
+			const updated: SongRequest = await res.json();
+			requests = requests.map((r) => (r.id === id ? updated : r));
+		} catch (e) {
+			alert(e instanceof Error ? e.message : 'Failed to queue');
+		} finally {
+			queuingId = null;
+		}
 	}
 
 	let requestCount = $derived(requests.filter((r) => r.status === 'pending').length);
@@ -290,6 +308,15 @@
 								</div>
 								<div class="flex shrink-0 items-center gap-2">
 									{#if req.status === 'pending'}
+										{#if req.spotifyTrackId}
+											<button
+												onclick={() => queueRequest(req.id)}
+												disabled={queuingId === req.id}
+												class="rounded-md bg-[#1DB954] px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-[#1ed760] disabled:opacity-50"
+											>
+												{queuingId === req.id ? 'Queuing…' : 'Queue'}
+											</button>
+										{/if}
 										<span
 											class="rounded-full bg-amber-950/50 px-2.5 py-0.5 text-xs font-medium text-amber-400"
 										>
