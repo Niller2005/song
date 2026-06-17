@@ -56,10 +56,11 @@ export async function getHistory(
 		playedAt: Date;
 	}[]
 > {
-	return db.query.listeningHistory.findMany({
+	const fetchMultiplier = 2;
+	const rows = await db.query.listeningHistory.findMany({
 		where: eq(listeningHistory.userId, userId),
 		orderBy: desc(listeningHistory.playedAt),
-		limit,
+		limit: limit * fetchMultiplier,
 		columns: {
 			id: true,
 			title: true,
@@ -71,4 +72,18 @@ export async function getHistory(
 			playedAt: true
 		}
 	});
+
+	const seenTrackIds = new Set<string>();
+	const deduped: typeof rows = [];
+	for (const row of rows) {
+		const trackId = row.spotifyTrackId;
+		if (trackId) {
+			if (seenTrackIds.has(trackId)) continue;
+			seenTrackIds.add(trackId);
+		}
+		deduped.push(row);
+		if (deduped.length >= limit) break;
+	}
+
+	return deduped;
 }

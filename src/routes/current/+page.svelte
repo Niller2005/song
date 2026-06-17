@@ -183,40 +183,41 @@
 				{/if}
 			</section>
 
-			<!-- Now Playing (middle, prominent) -->
+			<!-- Now Playing (compact mini-player) -->
 			<section class="mb-8">
 				{#if nowPlaying.isPlaying && nowPlaying.title}
-					<div class="rounded-xl border border-zinc-700 bg-zinc-900 p-8 text-center">
+					<div class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3">
 						{#if nowPlaying.albumArt}
 							<img
 								src={nowPlaying.albumArt}
 								alt={nowPlaying.album ?? 'Album art'}
-								class="mx-auto mb-6 h-48 w-48 rounded-2xl object-cover shadow-lg"
+								class="h-10 w-10 shrink-0 rounded-lg object-cover"
 							/>
+						{:else}
+							<div class="h-10 w-10 shrink-0 rounded-lg bg-zinc-800"></div>
 						{/if}
-						<h2 class="mb-1 text-2xl font-bold text-white">{nowPlaying.title}</h2>
-						<p class="mb-1 text-lg text-zinc-300">{nowPlaying.artist}</p>
-						{#if nowPlaying.album}
-							<p class="mb-3 text-sm text-zinc-500">{nowPlaying.album}</p>
-						{/if}
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-sm font-medium text-white">{nowPlaying.title}</p>
+							<p class="truncate text-xs text-zinc-400">{nowPlaying.artist}</p>
+						</div>
 						{#if progressText}
-							<p class="mb-4 text-sm text-zinc-400">{progressText}</p>
+							<span class="hidden shrink-0 text-xs tabular-nums text-zinc-600 sm:inline">{progressText}</span>
 						{/if}
 						{#if nowPlaying.spotifyUrl}
 							<a
 								href={nowPlaying.spotifyUrl}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-block rounded-lg bg-[#1DB954] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1ed760]"
+								class="shrink-0 rounded-md bg-[#1DB954] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#1ed760]"
 							>
-								Open in Spotify
+								Open
 							</a>
 						{/if}
 					</div>
 				{:else}
-					<div class="rounded-xl border border-zinc-700 bg-zinc-900 p-8 text-center">
-						<p class="text-zinc-400">Nothing is playing right now.</p>
-						<p class="mt-2 text-sm text-zinc-600">Play something on Spotify and it'll show up here.</p>
+					<div class="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-center">
+						<p class="text-sm text-zinc-500">Nothing is playing right now.</p>
+						<p class="text-xs text-zinc-700">Play something on Spotify and it'll show up here.</p>
 					</div>
 				{/if}
 			</section>
