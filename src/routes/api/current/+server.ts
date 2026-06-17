@@ -2,7 +2,6 @@ import { auth } from '$lib/auth';
 import { db } from '$lib/server/db';
 import { account } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
-import { env } from '$env/dynamic/private';
 import { recordPlay } from '$lib/server/listening-history';
 import { findYouTubeUrl } from '$lib/server/youtube-lookup';
 import type { RequestHandler } from './$types';
@@ -18,6 +17,7 @@ interface NowPlayingResponse {
 	spotifyUrl: string | null;
 	spotifyTrackId: string | null;
 	youtubeUrl: string | null;
+	notConnected?: boolean;
 }
 
 const NOT_PLAYING: NowPlayingResponse = {
@@ -33,46 +33,28 @@ const NOT_PLAYING: NowPlayingResponse = {
 	youtubeUrl: null
 };
 
-// /api/current?key=xxx — API key auth for OBS browser sources
-export const GET: RequestHandler = async ({ request, url }) => {
-	const apiKey = url.searchParams.get('key');
-	const configuredKey = env.NOW_PLAYING_API_KEY;
+async function getSpotifyUserId(): Promise<string | null> {
+	const accounts = await db.query.account.findMany({
+		where: eq(account.providerId, 'spotify'),
+		columns: { userId: true },
+		limit: 1
+	});
+	return accounts.length > 0 ? accounts[0].userId : null;
+}
 
-	let userId: string | null = null;
-
-	if (apiKey !== null) {
-		if (apiKey !== configuredKey) {
-			return new Response(JSON.stringify({ error: 'Invalid API key' }), {
-				status: 401,
-				headers: { 'Content-Type': 'application/json' }
-			});
-		}
-		const accounts = await db.query.account.findMany({
-			where: eq(account.providerId, 'spotify'),
-			columns: { userId: true },
-			limit: 1
+export const GET: RequestHandler = async ({ request }) => {
+	const userId = await getSpotifyUserId();
+	if (!userId) {
+		return new Response(JSON.stringify({ ...NOT_PLAYING, notConnected: true }), {
+			headers: { 'Content-Type': 'application/json' }
 		});
-		if (accounts.length === 0) {
-			return new Response(JSON.stringify({ ...NOT_PLAYING, notConnected: true }), {
-				headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
-			});
-		}
-		userId = accounts[0].userId;
-	} else {
-		const session = await auth.api.getSession({ headers: request.headers });
-		if (!session?.user) {
-			return new Response(JSON.stringify({ ...NOT_PLAYING, notConnected: true }), {
-				headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
-			});
-		}
-		userId = session.user.id;
 	}
 
 	try {
 		const accessTokenResult = await auth.api.getAccessToken({
 			body: {
 				providerId: 'spotify',
-				userId: userId!
+				userId
 			},
 			headers: request.headers
 		});

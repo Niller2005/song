@@ -49,32 +49,13 @@ const spec = {
 			get: {
 				summary: 'Get currently playing Spotify track',
 				description:
-					'Returns the currently playing track from Spotify. Requires authentication via session cookie (web) or `?key=` query parameter (OBS overlay). Automatically records plays to listening history.',
-				parameters: [
-					{
-						name: 'key',
-						in: 'query',
-						required: false,
-						schema: { type: 'string', example: 'your-api-key' },
-						description:
-							'API key for unauthenticated access (e.g. from OBS browser source). Configured via NOW_PLAYING_API_KEY env var.'
-					}
-				],
-				security: [{ sessionCookie: [] }, { apiKey: [] }],
+					'Returns the currently playing track from the linked Spotify account. Public endpoint — no authentication required.',
 				responses: {
 					'200': {
 						description: 'Currently playing state',
 						content: {
 							'application/json': {
 								schema: { $ref: '#/components/schemas/NowPlayingResponse' }
-							}
-						}
-					},
-					'401': {
-						description: 'Unauthorized',
-						content: {
-							'application/json': {
-								schema: { $ref: '#/components/schemas/Error' }
 							}
 						}
 					}
@@ -248,15 +229,8 @@ const spec = {
 			get: {
 				summary: 'Get listening history',
 				description:
-					'Returns recently played tracks for the authenticated user. Requires authentication via session cookie or `?key=` query parameter.',
+					'Returns recently played tracks from the linked Spotify account. Public endpoint — no authentication required.',
 				parameters: [
-					{
-						name: 'key',
-						in: 'query',
-						required: false,
-						schema: { type: 'string' },
-						description: 'API key for unauthenticated access'
-					},
 					{
 						name: 'limit',
 						in: 'query',
@@ -265,7 +239,6 @@ const spec = {
 						description: 'Number of history entries to return (max 100)'
 					}
 				],
-				security: [{ sessionCookie: [] }, { apiKey: [] }],
 				responses: {
 					'200': {
 						description: 'List of history entries, newest first',
@@ -277,10 +250,6 @@ const spec = {
 								}
 							}
 						}
-					},
-					'401': {
-						description: 'Unauthorized',
-						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
 					}
 				}
 			}

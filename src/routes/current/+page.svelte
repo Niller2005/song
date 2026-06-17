@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { authClient } from '$lib/auth-client';
-
 	interface NowPlayingData {
 		isPlaying: boolean;
 		title: string | null;
@@ -39,8 +37,6 @@
 		requestedBy: string;
 		requestedAt: string;
 	}
-
-	const session = authClient.useSession();
 
 	let nowPlaying: NowPlayingData = $state({
 		isPlaying: false,
@@ -83,10 +79,9 @@
 	);
 
 	async function fetchAll() {
-		const [npRes, histRes, reqRes] = await Promise.all([
+		const [npRes, histRes] = await Promise.all([
 			fetch('/api/current'),
-			fetch('/api/history?limit=15'),
-			fetch('/api/requests')
+			fetch('/api/history?limit=15')
 		]);
 
 		if (npRes.ok) {
@@ -101,28 +96,14 @@
 			);
 		}
 
-		if (reqRes.ok) {
-			const all: SongRequest[] = await reqRes.json();
-			queue = all.filter((r) => r.status === 'queued');
-		}
-
 		error = null;
 	}
 
 	$effect(() => {
-		if ($session.data?.user) {
-			fetchAll();
-			const interval = setInterval(fetchAll, 10000);
-			return () => clearInterval(interval);
-		}
+		fetchAll();
+		const interval = setInterval(fetchAll, 10000);
+		return () => clearInterval(interval);
 	});
-
-	async function signInWithSpotify() {
-		await authClient.signIn.social({
-			provider: 'spotify',
-			callbackURL: '/current'
-		});
-	}
 </script>
 
 <svelte:head>
@@ -131,29 +112,10 @@
 
 <div class="min-h-screen bg-zinc-950 px-4 py-12 text-zinc-100">
 	<div class="mx-auto max-w-2xl">
-		{#if $session.isPending}
+		{#if nowPlaying.notConnected}
 			<div class="rounded-xl border border-zinc-700 bg-zinc-900 p-8 text-center">
-				<p class="text-zinc-400">Loading...</p>
-			</div>
-		{:else if !$session.data?.user}
-			<div class="rounded-xl border border-zinc-700 bg-zinc-900 p-8 text-center">
-				<p class="mb-4 text-zinc-300">Connect your Spotify account to see what's playing.</p>
-				<button
-					onclick={signInWithSpotify}
-					class="inline-block rounded-xl bg-[#1DB954] px-7 py-3.5 font-semibold text-white transition-colors hover:bg-[#1ed760]"
-				>
-					Sign in with Spotify
-				</button>
-			</div>
-		{:else if nowPlaying.notConnected}
-			<div class="rounded-xl border border-zinc-700 bg-zinc-900 p-8 text-center">
-				<p class="mb-4 text-zinc-300">Connect your Spotify account to see what's playing.</p>
-				<button
-					onclick={signInWithSpotify}
-					class="inline-block rounded-xl bg-[#1DB954] px-7 py-3.5 font-semibold text-white transition-colors hover:bg-[#1ed760]"
-				>
-					Connect Spotify
-				</button>
+				<p class="text-zinc-400">Spotify not connected.</p>
+				<p class="mt-2 text-sm text-zinc-600">Connect a Spotify account to show currently playing tracks.</p>
 			</div>
 		{:else}
 
