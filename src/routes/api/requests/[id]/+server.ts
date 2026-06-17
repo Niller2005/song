@@ -99,6 +99,47 @@ export const PATCH: RequestHandler = async ({ params, request, url }) => {
 
 		if (!queueRes.ok) {
 			if (queueRes.status === 404) {
+				// No active device — try activating the last available device
+				const devicesRes = await fetch(
+					'https://api.spotify.com/v1/me/player/devices',
+					{ headers: { Authorization: `Bearer ${accessTokenResult.accessToken}` } }
+				);
+
+				if (devicesRes.ok) {
+					const { devices } = await devicesRes.json();
+					const device = devices?.find((d: { id: string | null }) => d.id);
+					if (device) {
+						await fetch('https://api.spotify.com/v1/me/player', {
+							method: 'PUT',
+							headers: {
+								Authorization: `Bearer ${accessTokenResult.accessToken}`,
+								'Content-Type': 'application/json'
+							},
+							body: JSON.stringify({ device_ids: [device.id], play: false })
+						});
+
+						// Retry queue on the activated device
+						const retryRes = await fetch(
+							`https://api.spotify.com/v1/me/player/queue?uri=spotify:track:${reqRow.spotifyTrackId}`,
+							{
+								method: 'POST',
+								headers: { Authorization: `Bearer ${accessTokenResult.accessToken}` }
+							}
+						);
+
+						if (retryRes.ok) {
+							const [updated] = await db
+								.update(songRequests)
+								.set({ status: 'playing' })
+								.where(eq(songRequests.id, params.id))
+								.returning();
+
+							return new Response(JSON.stringify(serialize(updated)), {
+								headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
+							});
+						}
+					}
+				}
 				return jsonError('No active Spotify device found — play something on Spotify first', 400);
 			}
 			return jsonError(`Spotify queue failed: ${queueRes.status}`, 502);
