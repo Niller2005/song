@@ -74,18 +74,6 @@
 			</div>
 		{/if}
 
-		<div class="text-center">
-			<a href="/now-playing" class="text-sm text-zinc-500 transition-colors hover:text-violet-400">
-				Now Playing
-			</a>
-			<span class="mx-2 text-zinc-700">·</span>
-			<a href="/history" class="text-sm text-zinc-500 transition-colors hover:text-violet-400">
-				History
-			</a>
-			<span class="mx-2 text-zinc-700">·</span>
-			<a href="/api" class="text-sm text-zinc-500 transition-colors hover:text-violet-400">
-				API
-			</a>
-		</div>
+
 	</div>
 </div>
