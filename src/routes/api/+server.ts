@@ -69,6 +69,14 @@ const spec = {
 								schema: { $ref: '#/components/schemas/NowPlayingResponse' }
 							}
 						}
+					},
+					'401': {
+						description: 'Unauthorized',
+						content: {
+							'application/json': {
+								schema: { $ref: '#/components/schemas/Error' }
+							}
+						}
 					}
 				}
 			}
