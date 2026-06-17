@@ -428,7 +428,7 @@ const spec = {
 					spotifyTrackId: { type: 'string', nullable: true, description: 'Spotify track ID' },
 					status: {
 						type: 'string',
-						enum: ['pending', 'playing', 'played'],
+						enum: ['pending', 'queued', 'playing', 'played'],
 						description: 'Queue status of the request'
 					},
 					requestedBy: { type: 'string', description: 'Display name of who requested the song' },

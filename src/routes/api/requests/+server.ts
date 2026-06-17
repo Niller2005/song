@@ -42,7 +42,7 @@ interface SongRequestResponse {
 	albumArt: string | null;
 	spotifyUrl: string | null;
 	spotifyTrackId: string | null;
-	status: 'pending' | 'playing' | 'played';
+	status: 'pending' | 'queued' | 'playing' | 'played';
 	requestedBy: string;
 	requestedAt: string;
 }
@@ -181,9 +181,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				if (queueRes.ok) {
 					await db
 						.update(songRequests)
-						.set({ status: 'playing' })
+						.set({ status: 'queued' })
 						.where(eq(songRequests.id, inserted.id));
-					inserted.status = 'playing';
+					inserted.status = 'queued';
 				}
 			}
 		} catch {

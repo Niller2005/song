@@ -25,7 +25,7 @@
 		albumArt: string | null;
 		spotifyUrl: string | null;
 		spotifyTrackId: string | null;
-		status: 'pending' | 'playing' | 'played';
+		status: 'pending' | 'queued' | 'playing' | 'played';
 		requestedBy: string;
 		requestedAt: string;
 	}
@@ -303,9 +303,11 @@
 								class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:border-zinc-700 {req.status ===
 								'pending'
 									? 'border-amber-700/40'
-									: req.status === 'playing'
-										? 'border-green-800/40'
-										: 'border-zinc-800'}"
+									: req.status === 'queued'
+										? 'border-sky-800/40'
+										: req.status === 'playing'
+											? 'border-green-800/40'
+											: 'border-zinc-800'}"
 							>
 								{#if req.albumArt}
 									<img src={req.albumArt} alt="" class="h-10 w-10 shrink-0 rounded object-cover" />
@@ -329,6 +331,12 @@
 											class="rounded-full bg-amber-950/50 px-2.5 py-0.5 text-xs font-medium text-amber-400"
 										>
 											pending
+										</span>
+									{:else if req.status === 'queued'}
+										<span
+											class="rounded-full bg-sky-950/50 px-2.5 py-0.5 text-xs font-medium text-sky-400"
+										>
+											queued
 										</span>
 									{:else if req.status === 'playing'}
 										<span

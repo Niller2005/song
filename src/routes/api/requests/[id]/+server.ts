@@ -40,7 +40,7 @@ interface SongRequestResponse {
 	albumArt: string | null;
 	spotifyUrl: string | null;
 	spotifyTrackId: string | null;
-	status: 'pending' | 'playing' | 'played';
+	status: 'pending' | 'queued' | 'playing' | 'played';
 	requestedBy: string;
 	requestedAt: string;
 }
@@ -130,7 +130,7 @@ export const PATCH: RequestHandler = async ({ params, request, url }) => {
 						if (retryRes.ok) {
 							const [updated] = await db
 								.update(songRequests)
-								.set({ status: 'playing' })
+								.set({ status: 'queued' })
 								.where(eq(songRequests.id, params.id))
 								.returning();
 
@@ -147,7 +147,7 @@ export const PATCH: RequestHandler = async ({ params, request, url }) => {
 
 		const [updated] = await db
 			.update(songRequests)
-			.set({ status: 'playing' })
+			.set({ status: 'queued' })
 			.where(eq(songRequests.id, params.id))
 			.returning();
 

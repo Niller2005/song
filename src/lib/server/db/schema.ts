@@ -152,7 +152,7 @@ export const songRequests = sqliteTable('song_requests', {
 	albumArt: text('album_art'),
 	spotifyUrl: text('spotify_url'),
 	spotifyTrackId: text('spotify_track_id'),
-	status: text('status', { enum: ['pending', 'playing', 'played'] })
+	status: text('status', { enum: ['pending', 'queued', 'playing', 'played'] })
 		.notNull()
 		.default('pending'),
 	requestedAt: integer('requested_at', { mode: 'timestamp' }).notNull()
