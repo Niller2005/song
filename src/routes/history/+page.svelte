@@ -74,10 +74,10 @@
 			<div class="rounded-xl border border-zinc-700 bg-zinc-900 p-8 text-center">
 				<p class="mb-4 text-zinc-300">Sign in to view your listening history.</p>
 				<a
-					href="/now-playing"
+					href="/current"
 					class="inline-block rounded-xl bg-violet-600 px-7 py-3.5 font-semibold text-white transition-colors hover:bg-violet-500"
 				>
-					Go to Now Playing
+					Go to Current
 				</a>
 			</div>
 		{:else if loading}
@@ -138,10 +138,10 @@
 
 			<div class="mt-8 flex justify-center gap-4">
 				<a
-					href="/now-playing"
+					href="/current"
 					class="rounded-xl bg-zinc-800 px-5 py-3 text-sm font-semibold text-zinc-300 transition-colors hover:bg-zinc-700"
 				>
-					Now Playing
+					Current
 				</a>
 				<a
 					href="/"

@@ -64,7 +64,7 @@
 	async function signInWithSpotify() {
 		await authClient.signIn.social({
 			provider: 'spotify',
-			callbackURL: '/now-playing'
+			callbackURL: '/current'
 		});
 	}
 </script>

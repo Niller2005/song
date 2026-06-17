@@ -180,7 +180,8 @@
 						<div class="py-8 text-center">
 							<p class="text-sm text-zinc-500">Spotify not connected</p>
 							<button
-								onclick={() => authClient.signIn.social({ provider: 'spotify', callbackURL: '/dashboard' })}
+								onclick={() =>
+									authClient.signIn.social({ provider: 'spotify', callbackURL: '/dashboard' })}
 								class="mt-3 rounded-lg bg-[#1DB954] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ed760]"
 							>
 								Connect Spotify
@@ -196,11 +197,11 @@
 					<h2 class="mb-4 text-lg font-semibold text-zinc-200">Overlay</h2>
 
 					{#if data.overlayUrl}
-						<p class="mb-3 text-sm text-zinc-400">
-							Use this URL as a Browser Source in OBS:
-						</p>
+						<p class="mb-3 text-sm text-zinc-400">Use this URL as a Browser Source in OBS:</p>
 						<div class="flex items-center gap-2">
-							<code class="min-w-0 flex-1 truncate rounded-lg bg-zinc-950 px-3 py-2.5 text-xs text-violet-300">
+							<code
+								class="min-w-0 flex-1 truncate rounded-lg bg-zinc-950 px-3 py-2.5 text-xs text-violet-300"
+							>
 								{data.overlayUrl}
 							</code>
 							<button
@@ -216,18 +217,18 @@
 					{:else}
 						<div class="rounded-lg border border-amber-800/50 bg-amber-950/20 px-4 py-3">
 							<p class="text-sm text-amber-400">
-								Set <code class="rounded bg-zinc-950 px-1 text-xs">NOW_PLAYING_API_KEY</code> in
-								your Vercel environment variables to enable the overlay.
+								Set <code class="rounded bg-zinc-950 px-1 text-xs">NOW_PLAYING_API_KEY</code> in your
+								Vercel environment variables to enable the overlay.
 							</p>
 						</div>
 					{/if}
 
 					{#if data.requestUrl}
-						<p class="mb-2 mt-5 text-sm text-zinc-400">
-							Song request submission URL:
-						</p>
+						<p class="mt-5 mb-2 text-sm text-zinc-400">Song request submission URL:</p>
 						<div class="flex items-center gap-2">
-							<code class="min-w-0 flex-1 truncate rounded-lg bg-zinc-950 px-3 py-2.5 text-xs text-violet-300">
+							<code
+								class="min-w-0 flex-1 truncate rounded-lg bg-zinc-950 px-3 py-2.5 text-xs text-violet-300"
+							>
 								{data.requestUrl}
 							</code>
 							<button
@@ -273,20 +274,21 @@
 					<div class="space-y-2">
 						{#each requests as req (req.id)}
 							<div
-								class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:border-zinc-700 {req.status === 'pending' ? 'border-amber-700/40' : req.status === 'playing' ? 'border-green-800/40' : 'border-zinc-800'}"
+								class="flex items-center gap-3 rounded-lg border px-4 py-3 transition-colors hover:border-zinc-700 {req.status ===
+								'pending'
+									? 'border-amber-700/40'
+									: req.status === 'playing'
+										? 'border-green-800/40'
+										: 'border-zinc-800'}"
 							>
 								{#if req.albumArt}
-									<img
-										src={req.albumArt}
-										alt=""
-										class="h-10 w-10 shrink-0 rounded object-cover"
-									/>
+									<img src={req.albumArt} alt="" class="h-10 w-10 shrink-0 rounded object-cover" />
 								{/if}
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm font-medium text-white">{req.title}</p>
 									<p class="truncate text-xs text-zinc-500">{req.artist}</p>
 								</div>
-								<div class="flex items-center gap-2 shrink-0">
+								<div class="flex shrink-0 items-center gap-2">
 									{#if req.status === 'pending'}
 										<span
 											class="rounded-full bg-amber-950/50 px-2.5 py-0.5 text-xs font-medium text-amber-400"

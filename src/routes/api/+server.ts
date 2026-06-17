@@ -21,7 +21,11 @@ const spec = {
 						name: 'url',
 						in: 'query',
 						required: true,
-						schema: { type: 'string', format: 'uri', example: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT' },
+						schema: {
+							type: 'string',
+							format: 'uri',
+							example: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT'
+						},
 						description: 'A music platform URL to look up'
 					}
 				],
@@ -134,7 +138,8 @@ const spec = {
 											},
 											requested_by: {
 												type: 'string',
-												description: 'Display name of the requester (defaults to authenticated user name)'
+												description:
+													'Display name of the requester (defaults to authenticated user name)'
 											}
 										}
 									},
@@ -158,7 +163,9 @@ const spec = {
 				responses: {
 					'201': {
 						description: 'Request created',
-						content: { 'application/json': { schema: { $ref: '#/components/schemas/SongRequest' } } }
+						content: {
+							'application/json': { schema: { $ref: '#/components/schemas/SongRequest' } }
+						}
 					},
 					'400': {
 						description: 'Invalid request body',
@@ -248,7 +255,11 @@ const spec = {
 						description: 'Album art or thumbnail URL'
 					},
 					type: { type: 'string', enum: ['song', 'album'] },
-					pageUrl: { type: 'string', nullable: true, description: 'Relative URL to the song page on this app' },
+					pageUrl: {
+						type: 'string',
+						nullable: true,
+						description: 'Relative URL to the song page on this app'
+					},
 					platforms: {
 						type: 'array',
 						items: { $ref: '#/components/schemas/PlatformLink' }
@@ -264,7 +275,11 @@ const spec = {
 				required: ['platform', 'url'],
 				properties: {
 					platform: { type: 'string', example: 'spotify', description: 'Platform identifier' },
-					url: { type: 'string', format: 'uri', example: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT' },
+					url: {
+						type: 'string',
+						format: 'uri',
+						example: 'https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT'
+					},
 					nativeAppUriMobile: { type: 'string', nullable: true },
 					nativeAppUriDesktop: { type: 'string', nullable: true }
 				}
@@ -344,8 +359,18 @@ const spec = {
 					id: { type: 'string', description: 'Unique request ID' },
 					title: { type: 'string', example: 'Bohemian Rhapsody' },
 					artist: { type: 'string', example: 'Queen' },
-					albumArt: { type: 'string', format: 'uri', nullable: true, description: 'Album art image URL' },
-					spotifyUrl: { type: 'string', format: 'uri', nullable: true, description: 'Spotify URL for the track' },
+					albumArt: {
+						type: 'string',
+						format: 'uri',
+						nullable: true,
+						description: 'Album art image URL'
+					},
+					spotifyUrl: {
+						type: 'string',
+						format: 'uri',
+						nullable: true,
+						description: 'Spotify URL for the track'
+					},
 					spotifyTrackId: { type: 'string', nullable: true, description: 'Spotify track ID' },
 					status: {
 						type: 'string',

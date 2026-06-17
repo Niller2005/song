@@ -73,7 +73,5 @@
 				{error}
 			</div>
 		{/if}
-
-
 	</div>
 </div>

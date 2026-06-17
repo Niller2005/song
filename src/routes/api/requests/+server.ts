@@ -17,7 +17,10 @@ function getUserIdFromApiKey(): Promise<string | null> {
 		.then((accounts) => (accounts.length > 0 ? accounts[0].userId : null));
 }
 
-async function authenticate(request: Request, url: URL): Promise<{ userId: string; userName: string } | null> {
+async function authenticate(
+	request: Request,
+	url: URL
+): Promise<{ userId: string; userName: string } | null> {
 	const apiKey = url.searchParams.get('key');
 	const isApiKeyValid = env.NOW_PLAYING_API_KEY && apiKey === env.NOW_PLAYING_API_KEY;
 
@@ -91,7 +94,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const inputUrl = typeof body.url === 'string' ? body.url.trim() : null;
 	const manualTitle = typeof body.title === 'string' ? body.title.trim() : null;
 	const manualArtist = typeof body.artist === 'string' ? body.artist.trim() : null;
-	const requestedBy = typeof body.requested_by === 'string' ? body.requested_by.trim() : auth_.userName;
+	const requestedBy =
+		typeof body.requested_by === 'string' ? body.requested_by.trim() : auth_.userName;
 
 	let title: string;
 	let artist: string;
@@ -108,7 +112,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			const spotifyLink = lookup.platforms.find((p) => p.platform === 'spotify');
 			if (spotifyLink?.url) {
 				spotifyUrl = spotifyLink.url;
-				const idMatch = spotifyLink.url.match(/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?track\/([a-zA-Z0-9]+)/);
+				const idMatch = spotifyLink.url.match(
+					/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?track\/([a-zA-Z0-9]+)/
+				);
 				spotifyTrackId = idMatch?.[1] ?? null;
 			}
 		} catch (err) {

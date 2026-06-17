@@ -22,7 +22,8 @@
 	});
 
 	let visible = $state(true);
-	const apiKey = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('key') : null;
+	const apiKey =
+		typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('key') : null;
 	const apiUrl = apiKey ? `/api/now-playing?key=${encodeURIComponent(apiKey)}` : '/api/now-playing';
 
 	async function fetchNowPlaying() {
@@ -115,12 +116,7 @@
 	}
 
 	.title {
-		font-family:
-			-apple-system,
-			BlinkMacSystemFont,
-			'Segoe UI',
-			system-ui,
-			sans-serif;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 		font-size: 16px;
 		font-weight: 600;
 		color: #fff;
@@ -131,12 +127,7 @@
 	}
 
 	.artist {
-		font-family:
-			-apple-system,
-			BlinkMacSystemFont,
-			'Segoe UI',
-			system-ui,
-			sans-serif;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 		font-size: 13px;
 		color: rgba(255, 255, 255, 0.7);
 		white-space: nowrap;
