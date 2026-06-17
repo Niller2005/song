@@ -1,8 +1,6 @@
 import { ScalarApiReference } from '@scalar/sveltekit';
 import type { RequestHandler } from './$types';
 
-import { building } from '$app/environment';
-
 const spec = {
 	openapi: '3.1.0',
 	info: {
@@ -67,6 +65,112 @@ const spec = {
 								schema: { $ref: '#/components/schemas/NowPlayingResponse' }
 							}
 						}
+					}
+				}
+			}
+		},
+		'/api/requests': {
+			get: {
+				summary: 'Get song request queue',
+				description:
+					'Returns the song request queue for the authenticated user. Pending requests are sorted first, then by request date descending. Requires authentication via session cookie or `?key=` query parameter.',
+				parameters: [
+					{
+						name: 'key',
+						in: 'query',
+						required: false,
+						schema: { type: 'string' },
+						description: 'API key for unauthenticated access'
+					}
+				],
+				security: [{ sessionCookie: [] }, { apiKey: [] }],
+				responses: {
+					'200': {
+						description: 'List of song requests, newest first',
+						content: {
+							'application/json': {
+								schema: {
+									type: 'array',
+									items: { $ref: '#/components/schemas/SongRequest' }
+								}
+							}
+						}
+					},
+					'401': {
+						description: 'Unauthorized',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					}
+				}
+			},
+			post: {
+				summary: 'Submit a song request',
+				description:
+					'Adds a song to the request queue. Accepts a music platform URL (resolved via song lookup) or manual title+artist. Optionally includes the requester display name.',
+				parameters: [
+					{
+						name: 'key',
+						in: 'query',
+						required: false,
+						schema: { type: 'string' },
+						description: 'API key for unauthenticated access'
+					}
+				],
+				security: [{ sessionCookie: [] }, { apiKey: [] }],
+				requestBody: {
+					required: true,
+					content: {
+						'application/json': {
+							schema: {
+								type: 'object',
+								oneOf: [
+									{
+										title: 'By URL',
+										required: ['url'],
+										properties: {
+											url: {
+												type: 'string',
+												format: 'uri',
+												description: 'A music platform URL to look up'
+											},
+											requested_by: {
+												type: 'string',
+												description: 'Display name of the requester (defaults to authenticated user name)'
+											}
+										}
+									},
+									{
+										title: 'By title and artist',
+										required: ['title', 'artist'],
+										properties: {
+											title: { type: 'string', description: 'Song title' },
+											artist: { type: 'string', description: 'Artist name' },
+											requested_by: {
+												type: 'string',
+												description: 'Display name of the requester'
+											}
+										}
+									}
+								]
+							}
+						}
+					}
+				},
+				responses: {
+					'201': {
+						description: 'Request created',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/SongRequest' } } }
+					},
+					'400': {
+						description: 'Invalid request body',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					},
+					'401': {
+						description: 'Unauthorized',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+					},
+					'422': {
+						description: 'URL lookup failed',
+						content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
 					}
 				}
 			}
@@ -230,6 +334,29 @@ const spec = {
 						type: 'string',
 						format: 'date-time',
 						description: 'ISO 8601 timestamp of when the track was played'
+					}
+				}
+			},
+			SongRequest: {
+				type: 'object',
+				required: ['id', 'title', 'artist', 'status', 'requestedBy', 'requestedAt'],
+				properties: {
+					id: { type: 'string', description: 'Unique request ID' },
+					title: { type: 'string', example: 'Bohemian Rhapsody' },
+					artist: { type: 'string', example: 'Queen' },
+					albumArt: { type: 'string', format: 'uri', nullable: true, description: 'Album art image URL' },
+					spotifyUrl: { type: 'string', format: 'uri', nullable: true, description: 'Spotify URL for the track' },
+					spotifyTrackId: { type: 'string', nullable: true, description: 'Spotify track ID' },
+					status: {
+						type: 'string',
+						enum: ['pending', 'playing', 'played'],
+						description: 'Queue status of the request'
+					},
+					requestedBy: { type: 'string', description: 'Display name of who requested the song' },
+					requestedAt: {
+						type: 'string',
+						format: 'date-time',
+						description: 'ISO 8601 timestamp of when the request was made'
 					}
 				}
 			},

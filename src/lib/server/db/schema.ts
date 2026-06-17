@@ -135,8 +135,34 @@ export const listeningHistoryRelations = relations(listeningHistory, ({ one }) =
 	user: one(user, { fields: [listeningHistory.userId], references: [user.id] })
 }));
 
+// ── Song requests (queue) ──
+
+export const songRequests = sqliteTable('song_requests', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	userId: text('user_id')
+		.notNull()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	requestedBy: text('requested_by').notNull(),
+	title: text('title').notNull(),
+	artist: text('artist').notNull(),
+	albumArt: text('album_art'),
+	spotifyUrl: text('spotify_url'),
+	spotifyTrackId: text('spotify_track_id'),
+	status: text('status', { enum: ['pending', 'playing', 'played'] })
+		.notNull()
+		.default('pending'),
+	requestedAt: integer('requested_at', { mode: 'timestamp' }).notNull()
+});
+
+export const songRequestsRelations = relations(songRequests, ({ one }) => ({
+	user: one(user, { fields: [songRequests.userId], references: [user.id] })
+}));
+
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
 	accounts: many(account),
-	listeningHistory: many(listeningHistory)
+	listeningHistory: many(listeningHistory),
+	songRequests: many(songRequests)
 }));
