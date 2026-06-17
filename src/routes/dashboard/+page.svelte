@@ -47,6 +47,7 @@
 	let copiedOverlay = $state(false);
 	let copiedRequest = $state(false);
 	let queuingId = $state<string | null>(null);
+	let queuingError = $state<string | null>(null);
 
 	function formatMs(ms: number): string {
 		const totalSeconds = Math.floor(ms / 1000);
@@ -118,6 +119,7 @@
 
 	async function queueRequest(id: string) {
 		queuingId = id;
+		queuingError = null;
 		try {
 			const res = await fetch(`/api/requests/${id}`, { method: 'PATCH' });
 			if (!res.ok) {
@@ -127,7 +129,7 @@
 			const updated: SongRequest = await res.json();
 			requests = requests.map((r) => (r.id === id ? updated : r));
 		} catch (e) {
-			alert(e instanceof Error ? e.message : 'Failed to queue');
+			queuingError = e instanceof Error ? e.message : 'Failed to queue';
 		} finally {
 			queuingId = null;
 		}
@@ -278,6 +280,12 @@
 						</button>
 					{/if}
 				</div>
+
+				{#if queuingError}
+					<p class="mb-3 rounded-lg border border-red-800/50 bg-red-950/20 px-3 py-2 text-sm text-red-400">
+						{queuingError}
+					</p>
+				{/if}
 
 				{#if reqError}
 					<p class="text-sm text-red-400">{reqError}</p>

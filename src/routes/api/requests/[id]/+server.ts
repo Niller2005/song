@@ -45,6 +45,13 @@ interface SongRequestResponse {
 	requestedAt: string;
 }
 
+function jsonError(error: string, status: number): Response {
+	return new Response(JSON.stringify({ error }), {
+		status,
+		headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' }
+	});
+}
+
 function serialize(r: typeof songRequests.$inferSelect): SongRequestResponse {
 	return {
 		id: r.id,
@@ -61,31 +68,16 @@ function serialize(r: typeof songRequests.$inferSelect): SongRequestResponse {
 
 export const PATCH: RequestHandler = async ({ params, request, url }) => {
 	const auth_ = await authenticate(request, url);
-	if (!auth_) {
-		return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-	}
+	if (!auth_) return jsonError('Unauthorized', 401);
 
 	const reqRow = await db.query.songRequests.findFirst({
 		where: eq(songRequests.id, params.id)
 	});
 
-	if (!reqRow) {
-		return new Response(JSON.stringify({ error: 'Request not found' }), { status: 404 });
-	}
-
-	if (reqRow.userId !== auth_.userId) {
-		return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
-	}
-
-	if (reqRow.status !== 'pending') {
-		return new Response(JSON.stringify({ error: 'Request is not pending' }), { status: 400 });
-	}
-
-	if (!reqRow.spotifyTrackId) {
-		return new Response(JSON.stringify({ error: 'Request has no Spotify track ID' }), {
-			status: 400
-		});
-	}
+	if (!reqRow) return jsonError('Request not found', 404);
+	if (reqRow.userId !== auth_.userId) return jsonError('Forbidden', 403);
+	if (reqRow.status !== 'pending') return jsonError('Request is not pending', 400);
+	if (!reqRow.spotifyTrackId) return jsonError('Request has no Spotify track ID', 400);
 
 	try {
 		const accessTokenResult = await auth.api.getAccessToken({
@@ -94,9 +86,7 @@ export const PATCH: RequestHandler = async ({ params, request, url }) => {
 		});
 
 		if (!accessTokenResult?.accessToken) {
-			return new Response(JSON.stringify({ error: 'No Spotify access token available' }), {
-				status: 503
-			});
+			return jsonError('No Spotify access token available', 503);
 		}
 
 		const queueRes = await fetch(
@@ -108,11 +98,10 @@ export const PATCH: RequestHandler = async ({ params, request, url }) => {
 		);
 
 		if (!queueRes.ok) {
-			const body = await queueRes.text();
-			return new Response(
-				JSON.stringify({ error: `Spotify queue failed: ${queueRes.status} ${body}` }),
-				{ status: 502 }
-			);
+			if (queueRes.status === 404) {
+				return jsonError('No active Spotify device found — play something on Spotify first', 400);
+			}
+			return jsonError(`Spotify queue failed: ${queueRes.status}`, 502);
 		}
 
 		const [updated] = await db
@@ -126,8 +115,6 @@ export const PATCH: RequestHandler = async ({ params, request, url }) => {
 		});
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unknown error';
-		return new Response(JSON.stringify({ error: `Failed to queue: ${message}` }), {
-			status: 500
-		});
+		return jsonError(`Failed to queue: ${message}`, 500);
 	}
 };
