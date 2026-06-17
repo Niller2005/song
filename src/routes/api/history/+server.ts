@@ -9,11 +9,14 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request, url }) => {
 	const apiKey = url.searchParams.get('key');
-	const isApiKeyValid = env.NOW_PLAYING_API_KEY && apiKey === env.NOW_PLAYING_API_KEY;
+	const configuredKey = env.NOW_PLAYING_API_KEY;
 
 	let userId: string | null = null;
 
-	if (isApiKeyValid) {
+	if (apiKey !== null) {
+		if (apiKey !== configuredKey) {
+			return new Response(JSON.stringify({ error: 'Invalid API key' }), { status: 401 });
+		}
 		const accounts = await db.query.account.findMany({
 			where: eq(account.providerId, 'spotify'),
 			columns: { userId: true },

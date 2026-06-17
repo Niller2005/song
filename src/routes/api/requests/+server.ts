@@ -23,9 +23,11 @@ async function authenticate(
 	url: URL
 ): Promise<{ userId: string; userName: string } | null> {
 	const apiKey = url.searchParams.get('key');
-	const isApiKeyValid = env.NOW_PLAYING_API_KEY && apiKey === env.NOW_PLAYING_API_KEY;
+	const configuredKey = env.NOW_PLAYING_API_KEY;
 
-	if (isApiKeyValid) {
+	if (apiKey !== null && apiKey !== configuredKey) return null;
+
+	if (apiKey !== null) {
 		const userId = await getUserIdFromApiKey();
 		if (!userId) return null;
 		return { userId, userName: 'API' };
