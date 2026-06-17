@@ -19,5 +19,16 @@ export const auth = betterAuth({
 			clientSecret: env.SPOTIFY_CLIENT_SECRET!,
 			scope: ['user-read-currently-playing', 'user-read-playback-state']
 		}
+	},
+	databaseHooks: {
+		user: {
+			create: {
+				before: async (user) => {
+					if (env.ALLOWED_EMAIL && user.email !== env.ALLOWED_EMAIL) {
+						return false;
+					}
+				}
+			}
+		}
 	}
 });
