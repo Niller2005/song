@@ -15,9 +15,10 @@ interface NowPlayingResponse {
 	progress: number | null;
 	duration: number | null;
 	spotifyUrl: string | null;
+	spotifyTrackId: string | null;
 }
 
-const NOT_PLAYING: NowPlayingResponse = {
+const 		NOT_PLAYING: NowPlayingResponse = {
 	isPlaying: false,
 	title: null,
 	artist: null,
@@ -25,7 +26,8 @@ const NOT_PLAYING: NowPlayingResponse = {
 	albumArt: null,
 	progress: null,
 	duration: null,
-	spotifyUrl: null
+	spotifyUrl: null,
+	spotifyTrackId: null
 };
 
 // /api/now-playing?key=xxx — API key auth for OBS browser sources
@@ -106,7 +108,8 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			albumArt: track.album?.images?.[0]?.url ?? null,
 			progress: data.progress_ms ?? null,
 			duration: track.duration_ms ?? null,
-			spotifyUrl: track.external_urls?.spotify ?? null
+			spotifyUrl: track.external_urls?.spotify ?? null,
+			spotifyTrackId: track.id ?? null
 		};
 
 		if (result.isPlaying && result.title && spotifyTrackId) {

@@ -10,6 +10,7 @@
 		progress: number | null;
 		duration: number | null;
 		spotifyUrl: string | null;
+		spotifyTrackId: string | null;
 		notConnected?: boolean;
 	}
 
@@ -46,7 +47,8 @@
 		albumArt: null,
 		progress: null,
 		duration: null,
-		spotifyUrl: null
+		spotifyUrl: null,
+		spotifyTrackId: null
 	});
 
 	let history: HistoryEntry[] = $state([]);
@@ -89,7 +91,10 @@
 		}
 
 		if (histRes.ok) {
-			history = await histRes.json();
+			const all: HistoryEntry[] = await histRes.json();
+			history = all.filter(
+				(e) => nowPlaying.spotifyTrackId == null || e.spotifyTrackId !== nowPlaying.spotifyTrackId
+			);
 		}
 
 		if (reqRes.ok) {
@@ -148,42 +153,7 @@
 			</div>
 		{:else}
 
-			<!-- Header -->
-			<div class="mb-10 text-center">
-				<h1 class="text-4xl font-bold tracking-tight text-white">Now Playing</h1>
-			</div>
-
-			<!-- History (top) -->
-			<section class="mb-8">
-				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-600">Recently Played</h2>
-				{#if history.length === 0}
-					<p class="text-sm text-zinc-600">No history yet.</p>
-				{:else}
-					<div class="space-y-1">
-						{#each history.slice(0, 10) as entry (entry.id)}
-							<a
-								href={entry.spotifyUrl ?? '#'}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-zinc-900 {!entry.spotifyUrl
-									? 'pointer-events-none'
-									: ''}"
-							>
-								{#if entry.albumArt}
-									<img src={entry.albumArt} alt="" class="h-9 w-9 shrink-0 rounded object-cover" />
-								{/if}
-								<div class="min-w-0 flex-1">
-									<p class="truncate text-sm text-zinc-300">{entry.title}</p>
-									<p class="truncate text-xs text-zinc-600">{entry.artist}</p>
-								</div>
-								<span class="shrink-0 text-xs text-zinc-700">{timeAgo(entry.playedAt)}</span>
-							</a>
-						{/each}
-					</div>
-				{/if}
-			</section>
-
-			<!-- Now Playing (compact mini-player) -->
+			<!-- Now Playing -->
 			<section class="mb-8">
 				{#if nowPlaying.isPlaying && nowPlaying.title}
 					<div class="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3">
@@ -222,7 +192,7 @@
 				{/if}
 			</section>
 
-			<!-- Queue (bottom) -->
+			<!-- Queue -->
 			<section class="mb-8">
 				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-600">Queue</h2>
 				{#if queue.length === 0}
@@ -250,18 +220,42 @@
 				{/if}
 			</section>
 
+			<!-- History -->
+			<section class="mb-8">
+				<h2 class="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-600">Recently Played</h2>
+				{#if history.length === 0}
+					<p class="text-sm text-zinc-600">No history yet.</p>
+				{:else}
+					<div class="space-y-1">
+						{#each history.slice(0, 4) as entry (entry.id)}
+							<a
+								href={entry.spotifyUrl ?? '#'}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-zinc-900 {!entry.spotifyUrl
+									? 'pointer-events-none'
+									: ''}"
+							>
+								{#if entry.albumArt}
+									<img src={entry.albumArt} alt="" class="h-9 w-9 shrink-0 rounded object-cover" />
+								{/if}
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-sm text-zinc-300">{entry.title}</p>
+									<p class="truncate text-xs text-zinc-600">{entry.artist}</p>
+								</div>
+								<span class="shrink-0 text-xs text-zinc-700">{timeAgo(entry.playedAt)}</span>
+							</a>
+						{/each}
+					</div>
+				{/if}
+				<a href="/history" class="mt-2 inline-block text-xs text-violet-400 hover:underline">Full history →</a>
+			</section>
+
 			{#if error}
 				<div class="rounded-xl border border-red-800 bg-red-950/50 px-5 py-4 text-red-300">
 					{error}
 				</div>
 			{/if}
-
-			<!-- Nav links -->
-			<div class="flex justify-center gap-4">
-				<a href="/dashboard" class="text-sm text-violet-400 hover:underline">Dashboard →</a>
-				<span class="text-zinc-700">|</span>
-				<a href="/overlay" class="text-sm text-zinc-500 hover:underline">Stream overlay →</a>
-			</div>
 		{/if}
 	</div>
 </div>
