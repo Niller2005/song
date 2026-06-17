@@ -24,7 +24,7 @@
 	let visible = $state(true);
 	const apiKey =
 		typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('key') : null;
-	const apiUrl = apiKey ? `/api/now-playing?key=${encodeURIComponent(apiKey)}` : '/api/now-playing';
+	const apiUrl = apiKey ? `/api/current?key=${encodeURIComponent(apiKey)}` : '/api/current';
 
 	async function fetchNowPlaying() {
 		try {

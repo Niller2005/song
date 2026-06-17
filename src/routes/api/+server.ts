@@ -45,7 +45,7 @@ const spec = {
 				}
 			}
 		},
-		'/api/now-playing': {
+		'/api/current': {
 			get: {
 				summary: 'Get currently playing Spotify track',
 				description:

@@ -64,7 +64,7 @@
 
 	async function fetchNowPlaying() {
 		try {
-			const res = await fetch('/api/now-playing');
+			const res = await fetch('/api/current');
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const json = await res.json();
 			if (!json.notConnected) {

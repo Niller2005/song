@@ -84,7 +84,7 @@
 
 	async function fetchAll() {
 		const [npRes, histRes, reqRes] = await Promise.all([
-			fetch('/api/now-playing'),
+			fetch('/api/current'),
 			fetch('/api/history?limit=15'),
 			fetch('/api/requests')
 		]);
