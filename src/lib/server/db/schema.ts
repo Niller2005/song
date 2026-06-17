@@ -73,6 +73,8 @@ export const session = sqliteTable('session', {
 	token: text('token').notNull().unique(),
 	createdAt: integer('createdAt', { mode: 'timestamp' }).notNull(),
 	updatedAt: integer('updatedAt', { mode: 'timestamp' }).notNull(),
+	ipAddress: text('ipAddress'),
+	userAgent: text('userAgent'),
 	userId: text('userId')
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' })
